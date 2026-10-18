@@ -118,6 +118,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const menuItems = userRole === 'super_admin'
     ? [
         { name: 'Dashboard & Stats', href: '/admin/dashboard', icon: LayoutDashboard, group: 'ADMINISTRATION' },
+        { name: 'Organisations & Agences', href: '/admin/organizations', icon: Building2, group: 'ADMINISTRATION' },
         { name: 'Piste d\'Audit', href: '/admin/audit-logs', icon: History, group: 'ADMINISTRATION' },
         { name: 'Diffusion Notifications', href: '/admin/broadcast', icon: Radio, group: 'ADMINISTRATION' },
         { name: 'Gestion des Forfaits', href: '/admin/plans', icon: Gem, group: 'SAAS' },
