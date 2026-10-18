@@ -82,9 +82,18 @@ export default function ChatPage() {
 
     const socket = io(api.origin, {
       auth: { token },
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
     });
     socketRef.current = socket;
+
+    socket.on('connect', () => {
+      if (selectedThreadRef.current?.id) {
+        socket.emit('chat:join_thread', selectedThreadRef.current.id);
+      }
+    });
 
     socket.on('chat:message', (data: any) => {
       if (selectedThreadRef.current && data.threadId === selectedThreadRef.current.id) {
