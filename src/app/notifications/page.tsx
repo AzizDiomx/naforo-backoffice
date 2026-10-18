@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import Layout from '@/components/Layout';
@@ -174,6 +174,105 @@ export default function NotificationsPage() {
     return true;
   });
 
+  const renderNotificationContent = () => {
+    if (loading) {
+      return (
+        <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
+          Chargement de vos notifications...
+        </div>
+      );
+    }
+
+    if (filteredNotifications.length === 0) {
+      return (
+        <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+          <Bell size={40} color="#cbd5e1" style={{ marginBottom: '12px' }} />
+          <h3 style={{ fontSize: '1.05rem', fontWeight: '600', color: '#0f172a', marginBottom: '4px' }}>
+            Aucune notification trouvée
+          </h3>
+          <p style={{ fontSize: '0.85rem', color: '#64748b' }}>
+            {search ? 'Aucun résultat ne correspond à votre recherche.' : 'Vous êtes à jour ! Aucune alerte enregistrée pour le moment.'}
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {filteredNotifications.map((n) => (
+          <div
+            key={n.id}
+            style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid #f1f5f9',
+              backgroundColor: n.isRead ? '#ffffff' : '#f0f9ff',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '16px',
+              transition: 'background-color 0.2s',
+            }}
+          >
+            {/* Icon */}
+            <div style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '10px',
+              backgroundColor: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              marginTop: '2px'
+            }}>
+              {getIcon(n.type)}
+            </div>
+
+            {/* Content */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '4px' }}>
+                <h3 style={{ fontSize: '0.95rem', fontWeight: n.isRead ? '600' : '700', color: '#0f172a' }}>
+                  {n.title}
+                </h3>
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                  <Calendar size={13} />
+                  {new Date(n.createdAt).toLocaleDateString('fr-FR', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+              </div>
+
+              <p style={{ fontSize: '0.875rem', color: '#475569', lineHeight: '1.6', wordBreak: 'break-word' }}>
+                {n.message}
+              </p>
+            </div>
+
+            {/* Read status / Action */}
+            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {!n.isRead ? (
+                <button
+                  onClick={() => handleMarkAsRead(n.id)}
+                  className="btn"
+                  style={{ padding: '6px 12px', fontSize: '0.75rem', backgroundColor: 'var(--primary)', color: '#ffffff', borderRadius: '6px', fontWeight: '600', border: 'none' }}
+                >
+                  Marquer comme lu
+                </button>
+              ) : (
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <CheckCircle2 size={14} color="#16a34a" /> Lu
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <Layout>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '1800px', margin: '0 auto' }}>
@@ -326,94 +425,7 @@ export default function NotificationsPage() {
 
         {/* Notifications Main List */}
         <div className="card" style={{ padding: 0, overflow: 'hidden', backgroundColor: '#ffffff', border: '1px solid #e2e8f0' }}>
-          {loading ? (
-            <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
-              Chargement de vos notifications...
-            </div>
-          ) : filteredNotifications.length === 0 ? (
-            <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-              <Bell size={40} color="#cbd5e1" style={{ marginBottom: '12px' }} />
-              <h3 style={{ fontSize: '1.05rem', fontWeight: '600', color: '#0f172a', marginBottom: '4px' }}>
-                Aucune notification trouvée
-              </h3>
-              <p style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                {search ? 'Aucun résultat ne correspond Ã  votre recherche.' : 'Vous Ãªtes Ã  jour ! Aucune alerte enregistrée pour le moment.'}
-              </p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {filteredNotifications.map((n) => (
-                <div
-                  key={n.id}
-                  style={{
-                    padding: '20px 24px',
-                    borderBottom: '1px solid #f1f5f9',
-                    backgroundColor: n.isRead ? '#ffffff' : '#f0f9ff',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '16px',
-                    transition: 'background-color 0.2s',
-                  }}
-                >
-                  {/* Icon */}
-                  <div style={{
-                    width: '42px',
-                    height: '42px',
-                    borderRadius: '10px',
-                    backgroundColor: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    marginTop: '2px'
-                  }}>
-                    {getIcon(n.type)}
-                  </div>
-
-                  {/* Content */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '4px' }}>
-                      <h3 style={{ fontSize: '0.95rem', fontWeight: n.isRead ? '600' : '700', color: '#0f172a' }}>
-                        {n.title}
-                      </h3>
-                      <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                        <Calendar size={13} />
-                        {new Date(n.createdAt).toLocaleDateString('fr-FR', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                    </div>
-
-                    <p style={{ fontSize: '0.875rem', color: '#475569', lineHeight: '1.6', wordBreak: 'break-word' }}>
-                      {n.message}
-                    </p>
-                  </div>
-
-                  {/* Read status / Action */}
-                  <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {!n.isRead ? (
-                      <button
-                        onClick={() => handleMarkAsRead(n.id)}
-                        className="btn"
-                        style={{ padding: '6px 12px', fontSize: '0.75rem', backgroundColor: 'var(--primary)', color: '#ffffff', borderRadius: '6px', fontWeight: '600', border: 'none' }}
-                      >
-                        Marquer comme lu
-                      </button>
-                    ) : (
-                      <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <CheckCircle2 size={14} color="#16a34a" /> Lu
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {renderNotificationContent()}
         </div>
 
       </div>

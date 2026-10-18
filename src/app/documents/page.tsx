@@ -247,9 +247,7 @@ export default function DocumentsPage() {
   };
 
   const getFullFileUrl = (fileUrl: string) => {
-    if (!fileUrl) return '';
-    if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) return fileUrl;
-    return `http://localhost:3000${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
+    return api.getFileUrl(fileUrl);
   };
 
   const copyFileUrl = (fileUrl: string, id: string) => {

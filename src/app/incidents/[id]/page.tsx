@@ -738,7 +738,7 @@ export default function IncidentDetailPage() {
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '12px' }}>
                   {incident.photos.map((url: string, idx: number) => {
-                    const fullUrl = url.startsWith('http') ? url : `http://localhost:3000${url.startsWith('/') ? '' : '/'}${url}`;
+                    const fullUrl = api.getFileUrl(url);
                     return (
                       <a
                         key={idx}

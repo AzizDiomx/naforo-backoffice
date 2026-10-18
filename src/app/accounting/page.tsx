@@ -450,7 +450,7 @@ export default function AccountingPage() {
               <button
                 onClick={() => {
                   const token = localStorage.getItem('accessToken');
-                  window.open(`http://localhost:3000/api/v1/accounting/export/excel?year=${selectedYear}&token=${token}`, '_blank');
+                  window.open(`${api.baseUrl}/accounting/export/excel?year=${selectedYear}&token=${token}`, '_blank');
                 }}
                 className="btn"
                 style={{

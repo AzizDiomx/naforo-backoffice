@@ -776,7 +776,7 @@ export default function AdminSubscriptionsPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <button
                             type="button"
-                            onClick={() => setPreviewProofUrl(`http://localhost:3000/${p.proofUrl}`)}
+                            onClick={() => setPreviewProofUrl(api.getFileUrl(p.proofUrl))}
                             style={{
                               backgroundColor: '#ffffff',
                               border: '1.5px solid #cbd5e1',
@@ -794,7 +794,7 @@ export default function AdminSubscriptionsPage() {
                             <Eye size={14} /> Voir le reçu
                           </button>
                           <a
-                            href={`http://localhost:3000/${p.proofUrl}`}
+                            href={api.getFileUrl(p.proofUrl)}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{ fontSize: '0.75rem', color: '#64748b', textDecoration: 'underline', display: 'flex', alignItems: 'center', gap: 4 }}
@@ -853,7 +853,7 @@ export default function AdminSubscriptionsPage() {
 
                       {p.pdfUrl && (
                         <a
-                          href={`http://localhost:3000/${p.pdfUrl}`}
+                          href={api.getFileUrl(p.pdfUrl)}
                           target="_blank"
                           rel="noopener noreferrer"
                           style={{

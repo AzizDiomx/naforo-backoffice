@@ -198,7 +198,7 @@ export default function SubscriptionPage() {
     setIsExporting(true);
     try {
       const token = localStorage.getItem('accessToken');
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+      const baseUrl = api.baseUrl;
       const res = await fetch(`${baseUrl}/subscriptions/export-data`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -973,7 +973,7 @@ export default function SubscriptionPage() {
                       <td style={{ padding: '14px 20px', textAlign: 'right' }}>
                         {p.pdfUrl ? (
                           <a
-                            href={`http://localhost:3000${p.pdfUrl}`}
+                            href={api.getFileUrl(p.pdfUrl)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="btn btn-secondary"

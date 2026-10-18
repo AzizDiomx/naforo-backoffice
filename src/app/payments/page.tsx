@@ -711,7 +711,7 @@ export default function PaymentsPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                           {p.proofUrl ? (
                             <button
-                              onClick={() => setPreviewProofUrl(`http://localhost:3000${p.proofUrl}`)}
+                              onClick={() => setPreviewProofUrl(api.getFileUrl(p.proofUrl))}
                               className="btn btn-secondary"
                               style={{ padding: '4px 8px', fontSize: '0.75rem', gap: '4px' }}
                               title="Afficher le reçu ou la capture"
@@ -725,7 +725,7 @@ export default function PaymentsPage() {
 
                           {receipt && receipt.pdfUrl && (
                             <a
-                              href={`http://localhost:3000${receipt.pdfUrl}`}
+                              href={api.getFileUrl(receipt.pdfUrl)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="btn btn-secondary"

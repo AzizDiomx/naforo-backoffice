@@ -1,4 +1,32 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+const isBrowser = typeof window !== 'undefined';
+const isLocalhost = isBrowser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+export const API_BASE_URL: string = (
+  (!isLocalhost && isBrowser)
+    ? (process.env.NEXT_PUBLIC_API_URL && !process.env.NEXT_PUBLIC_API_URL.includes('localhost')
+        ? process.env.NEXT_PUBLIC_API_URL
+        : 'https://backend.naforo.company/api/v1')
+    : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1')
+).replace(/\/+$/, '');
+
+export const API_ORIGIN: string = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+
+export function getFileUrl(path?: string | null): string {
+  if (!path) return '';
+  if (path.startsWith('http://localhost:3000') || path.startsWith('http://127.0.0.1:3000') || path.includes('localhost:3000')) {
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return path.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/, API_ORIGIN);
+    }
+  }
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && (path.includes('localhost') || path.includes('127.0.0.1'))) {
+      return path.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/, API_ORIGIN);
+    }
+    return path;
+  }
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${API_ORIGIN}${cleanPath}`;
+}
 
 export class ApiError extends Error {
   status: number;
@@ -130,5 +158,8 @@ export const api = {
   },
   postFormData: async <T = any>(endpoint: string, formData: FormData): Promise<T> => {
     return api.upload<T>(endpoint, formData);
-  }
+  },
+  getFileUrl: (path?: string | null) => getFileUrl(path),
+  baseUrl: API_BASE_URL,
+  origin: API_ORIGIN,
 };

@@ -80,7 +80,7 @@ export default function ChatPage() {
     const token = localStorage.getItem('accessToken');
     if (!token) return;
 
-    const socket = io('http://localhost:3000', {
+    const socket = io(api.origin, {
       auth: { token },
       transports: ['websocket'],
     });

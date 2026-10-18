@@ -224,12 +224,12 @@ export default function InvoicesPage() {
   // Download PDF
   const handleDownloadPdf = async (invoice: any) => {
     if (invoice.pdfUrl) {
-      window.open(`http://localhost:3000${invoice.pdfUrl}`, '_blank');
+      window.open(api.getFileUrl(invoice.pdfUrl), '_blank');
     } else {
       try {
         const res = await api.post(`/invoices/${invoice.id}/pdf`, {});
         if (res.pdfUrl) {
-          window.open(`http://localhost:3000${res.pdfUrl}`, '_blank');
+          window.open(api.getFileUrl(res.pdfUrl), '_blank');
           loadData();
         }
       } catch (err) {
