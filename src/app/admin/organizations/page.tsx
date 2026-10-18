@@ -2,23 +2,19 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Layout from '@/components/Layout';
-import { api, ApiError } from '@/lib/api';
+import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import {
   Building2,
   Users,
   FileText,
   CreditCard,
-  TrendingUp,
-  ShieldCheck,
   CheckCircle2,
   AlertTriangle,
   X,
   Search,
-  Filter,
   Plus,
   Edit3,
-  Eye,
   Copy,
   Check,
   RefreshCw,
@@ -27,17 +23,15 @@ import {
   Unlock,
   Mail,
   Phone,
-  MapPin,
   Gem,
   BarChart3,
   Calendar,
-  Layers,
-  ArrowRight,
-  Clock,
   Sparkles,
   Home,
   CheckCheck,
-  AlertCircle
+  ShieldCheck,
+  ExternalLink,
+  MapPin
 } from 'lucide-react';
 
 interface OrgCount {
@@ -174,7 +168,6 @@ export default function AdminOrganizationsPage() {
     else setRefreshing(true);
 
     try {
-      // Backend returns { success: true, data: Organization[], meta: ... }
       const res = await api.get('/organizations?limit=100');
       const list = Array.isArray(res) ? res : (res?.data || res?.items || []);
       setOrganizations(list);
@@ -214,11 +207,9 @@ export default function AdminOrganizationsPage() {
     setStatsData(null);
 
     try {
-      // 1. Fetch detailed stats
       const statsRes = await api.get(`/organizations/${org.id}/stats`);
       setStatsData(statsRes);
 
-      // 2. Refresh org details including users
       const detailsRes = await api.get(`/organizations/${org.id}`);
       if (detailsRes) {
         setSelectedOrgForStats(detailsRes);
@@ -302,7 +293,7 @@ export default function AdminOrganizationsPage() {
 
     setCreateLoading(true);
     try {
-      const created = await api.post('/organizations', createForm);
+      await api.post('/organizations', createForm);
       toast.success('Organisation créée avec succès !');
       setCreateModalOpen(false);
       setCreateForm({
@@ -383,9 +374,6 @@ export default function AdminOrganizationsPage() {
     const total = organizations.length;
     const active = organizations.filter(o => o.isActive).length;
     const suspended = organizations.filter(o => !o.isActive).length;
-    const pendingDeletion = organizations.filter(
-      o => o.settings?.deletionRequested === true
-    ).length;
 
     const totalProperties = organizations.reduce(
       (acc, o) => acc + (o._count?.properties || 0),
@@ -415,7 +403,6 @@ export default function AdminOrganizationsPage() {
       total,
       active,
       suspended,
-      pendingDeletion,
       totalProperties,
       totalContracts,
       totalTenants,
@@ -428,7 +415,6 @@ export default function AdminOrganizationsPage() {
   // Filtered List
   const filteredOrganizations = useMemo(() => {
     return organizations.filter(org => {
-      // Search
       if (search.trim()) {
         const q = search.toLowerCase();
         const matchesName = org.name?.toLowerCase().includes(q);
@@ -441,12 +427,10 @@ export default function AdminOrganizationsPage() {
         }
       }
 
-      // Status
       if (statusFilter === 'active' && !org.isActive) return false;
       if (statusFilter === 'suspended' && org.isActive) return false;
       if (statusFilter === 'grace' && !org.settings?.deletionRequested) return false;
 
-      // Plan
       if (planFilter !== 'all') {
         const p = (org.plan || 'starter').toLowerCase();
         if (planFilter === 'expert') {
@@ -458,7 +442,6 @@ export default function AdminOrganizationsPage() {
         }
       }
 
-      // Country
       if (countryFilter !== 'all' && (org.country || 'CI') !== countryFilter) {
         return false;
       }
@@ -494,13 +477,13 @@ export default function AdminOrganizationsPage() {
             display: 'inline-flex',
             alignItems: 'center',
             gap: '5px',
-            padding: '3px 10px',
+            padding: '4px 10px',
             borderRadius: '999px',
             fontSize: '0.72rem',
             fontWeight: '700',
-            backgroundColor: 'rgba(168, 85, 247, 0.15)',
-            color: '#c084fc',
-            border: '1px solid rgba(168, 85, 247, 0.3)'
+            backgroundColor: '#faf5ff',
+            color: '#7e22ce',
+            border: '1px solid #e9d5ff'
           }}
         >
           <Gem size={12} />
@@ -515,13 +498,13 @@ export default function AdminOrganizationsPage() {
             display: 'inline-flex',
             alignItems: 'center',
             gap: '5px',
-            padding: '3px 10px',
+            padding: '4px 10px',
             borderRadius: '999px',
             fontSize: '0.72rem',
             fontWeight: '700',
-            backgroundColor: 'rgba(245, 158, 11, 0.15)',
-            color: '#fbbf24',
-            border: '1px solid rgba(245, 158, 11, 0.3)'
+            backgroundColor: '#fefce8',
+            color: '#b45309',
+            border: '1px solid #fef08a'
           }}
         >
           <Sparkles size={12} />
@@ -535,13 +518,13 @@ export default function AdminOrganizationsPage() {
           display: 'inline-flex',
           alignItems: 'center',
           gap: '5px',
-          padding: '3px 10px',
+          padding: '4px 10px',
           borderRadius: '999px',
           fontSize: '0.72rem',
           fontWeight: '700',
-          backgroundColor: 'rgba(148, 163, 184, 0.12)',
-          color: '#cbd5e1',
-          border: '1px solid rgba(148, 163, 184, 0.25)'
+          backgroundColor: '#f1f5f9',
+          color: '#475569',
+          border: '1px solid #e2e8f0'
         }}
       >
         <Building2 size={12} />
@@ -552,48 +535,37 @@ export default function AdminOrganizationsPage() {
 
   return (
     <Layout>
-      <div style={{ maxWidth: '1440px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '28px', paddingBottom: '60px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '1440px', margin: '0 auto', width: '100%', paddingBottom: '60px' }}>
         
-        {/* TOP HEADER */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+        {/* TOP HEADER SECTION */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-              <div
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '10px',
-                  backgroundColor: 'rgba(255, 239, 179, 0.15)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--accent)'
-                }}
-              >
-                <Building2 size={20} />
-              </div>
-              <h1 style={{ fontSize: '1.65rem', fontWeight: '800', color: '#ffffff', letterSpacing: '-0.02em', margin: 0 }}>
-                Gestion des Organisations
-              </h1>
-              <span
-                style={{
-                  padding: '3px 10px',
-                  borderRadius: '999px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  fontSize: '0.75rem',
-                  fontWeight: '700'
-                }}
-              >
-                Super Admin
-              </span>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                backgroundColor: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                padding: '4px 14px',
+                borderRadius: '50px',
+                fontSize: '0.75rem',
+                fontWeight: 800,
+                color: '#15803d',
+                marginBottom: '8px'
+              }}
+            >
+              <ShieldCheck size={14} color="#16a34a" /> SUPER ADMIN • MULTI-TENANTS
             </div>
-            <p style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: '0.875rem', margin: 0 }}>
-              Supervision multi-tenants, affectation des plans, analyse d'activité et statistiques en temps réel.
+            <h1 style={{ fontSize: '1.85rem', fontWeight: 900, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
+              Gestion des Organisations
+            </h1>
+            <p style={{ color: '#475569', fontSize: '0.9rem', marginTop: '4px' }}>
+              Supervision des agences et bailleurs, attribution des formules, suivi d'activité et statistiques multi-comptes.
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <button
               onClick={() => fetchOrganizations(true)}
               disabled={refreshing || loading}
@@ -601,15 +573,15 @@ export default function AdminOrganizationsPage() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
-                padding: '9px 15px',
-                borderRadius: '10px',
-                backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                color: '#ffffff',
+                padding: '10px 16px',
+                borderRadius: '12px',
+                backgroundColor: '#ffffff',
+                border: '1.5px solid #cbd5e1',
+                color: '#0f172a',
                 fontSize: '0.8125rem',
                 fontWeight: '600',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.15s ease'
               }}
             >
               <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
@@ -622,15 +594,15 @@ export default function AdminOrganizationsPage() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
-                padding: '9px 15px',
-                borderRadius: '10px',
-                backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                color: '#ffffff',
+                padding: '10px 16px',
+                borderRadius: '12px',
+                backgroundColor: '#ffffff',
+                border: '1.5px solid #cbd5e1',
+                color: '#0f172a',
                 fontSize: '0.8125rem',
                 fontWeight: '600',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.15s ease'
               }}
             >
               <Download size={15} />
@@ -643,16 +615,16 @@ export default function AdminOrganizationsPage() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
-                padding: '9px 18px',
-                borderRadius: '10px',
-                backgroundColor: 'var(--accent)',
+                padding: '10px 20px',
+                borderRadius: '12px',
+                backgroundColor: 'var(--primary)',
                 border: 'none',
-                color: '#013e37',
+                color: '#ffffff',
                 fontSize: '0.8125rem',
                 fontWeight: '700',
                 cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(255, 239, 179, 0.3)',
-                transition: 'all 0.2s ease'
+                boxShadow: '0 4px 14px rgba(1, 62, 55, 0.25)',
+                transition: 'all 0.15s ease'
               }}
             >
               <Plus size={16} strokeWidth={2.5} />
@@ -662,126 +634,142 @@ export default function AdminOrganizationsPage() {
         </div>
 
         {/* METRICS CARDS */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '16px' }}>
-          {/* Total Orgs */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+          {/* Card 1: Total Orgs */}
           <div
+            className="card"
             style={{
-              padding: '18px 20px',
+              padding: '20px',
               borderRadius: '16px',
-              backgroundColor: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
+              backgroundColor: '#ffffff',
+              border: '1.5px solid #e2e8f0',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
               display: 'flex',
               flexDirection: 'column',
               gap: '6px'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Organisations
               </span>
-              <Building2 size={18} style={{ color: 'var(--accent)' }} />
+              <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }}>
+                <Building2 size={18} />
+              </div>
             </div>
-            <div style={{ fontSize: '1.8rem', fontWeight: '800', color: '#ffffff' }}>
+            <div style={{ fontSize: '2rem', fontWeight: '900', color: '#0f172a' }}>
               {kpis.total}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.75rem', marginTop: '4px' }}>
-              <span style={{ color: '#4ade80', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#4ade80' }}></span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.78rem', marginTop: '4px' }}>
+              <span style={{ color: '#16a34a', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#16a34a' }}></span>
                 {kpis.active} actives
               </span>
               {kpis.suspended > 0 && (
-                <span style={{ color: '#f87171', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#f87171' }}></span>
+                <span style={{ color: '#dc2626', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#dc2626' }}></span>
                   {kpis.suspended} suspendues
                 </span>
               )}
             </div>
           </div>
 
-          {/* Properties Count */}
+          {/* Card 2: Biens Immobiliers */}
           <div
+            className="card"
             style={{
-              padding: '18px 20px',
+              padding: '20px',
               borderRadius: '16px',
-              backgroundColor: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
+              backgroundColor: '#ffffff',
+              border: '1.5px solid #e2e8f0',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
               display: 'flex',
               flexDirection: 'column',
               gap: '6px'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Biens Immobiliers
               </span>
-              <Home size={18} style={{ color: '#38bdf8' }} />
+              <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284c7' }}>
+                <Home size={18} />
+              </div>
             </div>
-            <div style={{ fontSize: '1.8rem', fontWeight: '800', color: '#ffffff' }}>
+            <div style={{ fontSize: '2rem', fontWeight: '900', color: '#0f172a' }}>
               {kpis.totalProperties}
             </div>
-            <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.55)' }}>
-              Logements & locaux gérés
+            <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+              Unités et logements gérés
             </span>
           </div>
 
-          {/* Active Contracts */}
+          {/* Card 3: Baux Actifs */}
           <div
+            className="card"
             style={{
-              padding: '18px 20px',
+              padding: '20px',
               borderRadius: '16px',
-              backgroundColor: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
+              backgroundColor: '#ffffff',
+              border: '1.5px solid #e2e8f0',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
               display: 'flex',
               flexDirection: 'column',
               gap: '6px'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Contrats de Bail
               </span>
-              <FileText size={18} style={{ color: '#a78bfa' }} />
+              <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#faf5ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9333ea' }}>
+                <FileText size={18} />
+              </div>
             </div>
-            <div style={{ fontSize: '1.8rem', fontWeight: '800', color: '#ffffff' }}>
+            <div style={{ fontSize: '2rem', fontWeight: '900', color: '#0f172a' }}>
               {kpis.totalContracts}
             </div>
-            <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.55)' }}>
+            <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
               Pour {kpis.totalTenants} locataires enregistrés
             </span>
           </div>
 
-          {/* Plan Breakdown */}
+          {/* Card 4: Formules */}
           <div
+            className="card"
             style={{
-              padding: '18px 20px',
+              padding: '20px',
               borderRadius: '16px',
-              backgroundColor: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
+              backgroundColor: '#ffffff',
+              border: '1.5px solid #e2e8f0',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
               display: 'flex',
               flexDirection: 'column',
               gap: '6px'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Formules Actives
               </span>
-              <Gem size={18} style={{ color: '#fbbf24' }} />
+              <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#fefce8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ca8a04' }}>
+                <Gem size={18} />
+              </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-              <span style={{ fontSize: '1.35rem', fontWeight: '800', color: '#fbbf24' }}>
+              <span style={{ fontSize: '1.4rem', fontWeight: '900', color: '#b45309' }}>
                 {kpis.proCount} Pro
               </span>
-              <span style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.4)' }}>/</span>
-              <span style={{ fontSize: '1.1rem', fontWeight: '700', color: '#c084fc' }}>
+              <span style={{ fontSize: '0.9rem', color: '#cbd5e1' }}>/</span>
+              <span style={{ fontSize: '1.2rem', fontWeight: '800', color: '#7e22ce' }}>
                 {kpis.expertCount} Exp
               </span>
-              <span style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.4)' }}>/</span>
-              <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#cbd5e1' }}>
+              <span style={{ fontSize: '0.9rem', color: '#cbd5e1' }}>/</span>
+              <span style={{ fontSize: '1rem', fontWeight: '700', color: '#475569' }}>
                 {kpis.starterCount} St
               </span>
             </div>
-            <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.55)' }}>
+            <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
               Répartition des abonnements
             </span>
           </div>
@@ -789,11 +777,13 @@ export default function AdminOrganizationsPage() {
 
         {/* SEARCH & FILTERS BAR */}
         <div
+          className="card"
           style={{
             padding: '16px 20px',
             borderRadius: '16px',
-            backgroundColor: 'rgba(255, 255, 255, 0.03)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
+            backgroundColor: '#ffffff',
+            border: '1.5px solid #e2e8f0',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
             display: 'flex',
             flexWrap: 'wrap',
             alignItems: 'center',
@@ -803,13 +793,7 @@ export default function AdminOrganizationsPage() {
         >
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px', flex: 1, minWidth: '320px' }}>
             {/* Search Input */}
-            <div
-              style={{
-                position: 'relative',
-                flex: '1 1 260px',
-                minWidth: '220px'
-              }}
-            >
+            <div style={{ position: 'relative', flex: '1 1 260px', minWidth: '220px' }}>
               <Search
                 size={16}
                 style={{
@@ -817,7 +801,7 @@ export default function AdminOrganizationsPage() {
                   left: '12px',
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  color: 'rgba(255, 255, 255, 0.4)'
+                  color: '#94a3b8'
                 }}
               />
               <input
@@ -827,12 +811,12 @@ export default function AdminOrganizationsPage() {
                 onChange={e => setSearch(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '9px 12px 9px 36px',
+                  padding: '10px 12px 10px 38px',
                   borderRadius: '10px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  color: '#ffffff',
-                  fontSize: '0.8125rem',
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  color: '#0f172a',
+                  fontSize: '0.84rem',
                   outline: 'none'
                 }}
               />
@@ -843,20 +827,20 @@ export default function AdminOrganizationsPage() {
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value as any)}
               style={{
-                padding: '9px 14px',
+                padding: '10px 14px',
                 borderRadius: '10px',
-                backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                color: '#ffffff',
-                fontSize: '0.8125rem',
+                backgroundColor: '#f8fafc',
+                border: '1px solid #cbd5e1',
+                color: '#0f172a',
+                fontSize: '0.84rem',
                 cursor: 'pointer',
                 outline: 'none'
               }}
             >
-              <option value="all" style={{ backgroundColor: '#0a2e29' }}>Tous les statuts</option>
-              <option value="active" style={{ backgroundColor: '#0a2e29' }}>Actives uniquement</option>
-              <option value="suspended" style={{ backgroundColor: '#0a2e29' }}>Suspendues uniquement</option>
-              <option value="grace" style={{ backgroundColor: '#0a2e29' }}>En délai de rétractation (30j)</option>
+              <option value="all">Tous les statuts</option>
+              <option value="active">Actives uniquement</option>
+              <option value="suspended">Suspendues uniquement</option>
+              <option value="grace">En délai de rétractation (30j)</option>
             </select>
 
             {/* Plan Filter */}
@@ -864,20 +848,20 @@ export default function AdminOrganizationsPage() {
               value={planFilter}
               onChange={e => setPlanFilter(e.target.value)}
               style={{
-                padding: '9px 14px',
+                padding: '10px 14px',
                 borderRadius: '10px',
-                backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                color: '#ffffff',
-                fontSize: '0.8125rem',
+                backgroundColor: '#f8fafc',
+                border: '1px solid #cbd5e1',
+                color: '#0f172a',
+                fontSize: '0.84rem',
                 cursor: 'pointer',
                 outline: 'none'
               }}
             >
-              <option value="all" style={{ backgroundColor: '#0a2e29' }}>Toutes les formules</option>
-              <option value="starter" style={{ backgroundColor: '#0a2e29' }}>Starter (Gratuit)</option>
-              <option value="pro" style={{ backgroundColor: '#0a2e29' }}>Pro / Sérénité</option>
-              <option value="expert" style={{ backgroundColor: '#0a2e29' }}>Expert / Agence</option>
+              <option value="all">Toutes les formules</option>
+              <option value="starter">Starter (Gratuit)</option>
+              <option value="pro">Pro / Sérénité</option>
+              <option value="expert">Expert / Agence</option>
             </select>
 
             {/* Country Filter */}
@@ -885,50 +869,54 @@ export default function AdminOrganizationsPage() {
               value={countryFilter}
               onChange={e => setCountryFilter(e.target.value)}
               style={{
-                padding: '9px 14px',
+                padding: '10px 14px',
                 borderRadius: '10px',
-                backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                color: '#ffffff',
-                fontSize: '0.8125rem',
+                backgroundColor: '#f8fafc',
+                border: '1px solid #cbd5e1',
+                color: '#0f172a',
+                fontSize: '0.84rem',
                 cursor: 'pointer',
                 outline: 'none'
               }}
             >
-              <option value="all" style={{ backgroundColor: '#0a2e29' }}>Tous les pays</option>
-              <option value="CI" style={{ backgroundColor: '#0a2e29' }}>🇨🇮 Côte d'Ivoire</option>
-              <option value="SN" style={{ backgroundColor: '#0a2e29' }}>🇸🇳 Sénégal</option>
-              <option value="ML" style={{ backgroundColor: '#0a2e29' }}>🇲🇱 Mali</option>
-              <option value="BF" style={{ backgroundColor: '#0a2e29' }}>🇧🇫 Burkina Faso</option>
-              <option value="GN" style={{ backgroundColor: '#0a2e29' }}>🇬🇳 Guinée</option>
-              <option value="FR" style={{ backgroundColor: '#0a2e29' }}>🇫🇷 France</option>
+              <option value="all">Tous les pays</option>
+              <option value="CI">🇨🇮 Côte d'Ivoire</option>
+              <option value="SN">🇸🇳 Sénégal</option>
+              <option value="ML">🇲🇱 Mali</option>
+              <option value="BF">🇧🇫 Burkina Faso</option>
+              <option value="GN">🇬🇳 Guinée</option>
+              <option value="BJ">🇧🇯 Bénin</option>
+              <option value="TG">🇹🇬 Togo</option>
+              <option value="CM">🇨🇲 Cameroun</option>
+              <option value="FR">🇫🇷 France</option>
             </select>
           </div>
 
-          {/* View Toggle & Count */}
+          {/* View Mode Toggle */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '0.8125rem', color: 'rgba(255, 255, 255, 0.5)' }}>
+            <span style={{ fontSize: '0.8125rem', color: '#64748b', fontWeight: '500' }}>
               {filteredOrganizations.length} organisation{filteredOrganizations.length > 1 ? 's' : ''}
             </span>
             <div
               style={{
                 display: 'flex',
-                backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                backgroundColor: '#f1f5f9',
                 borderRadius: '8px',
                 padding: '3px',
-                border: '1px solid rgba(255, 255, 255, 0.08)'
+                border: '1px solid #e2e8f0'
               }}
             >
               <button
                 onClick={() => setViewMode('table')}
                 style={{
-                  padding: '5px 10px',
+                  padding: '6px 12px',
                   borderRadius: '6px',
                   border: 'none',
-                  backgroundColor: viewMode === 'table' ? 'var(--accent)' : 'transparent',
-                  color: viewMode === 'table' ? '#013e37' : 'rgba(255, 255, 255, 0.7)',
-                  fontSize: '0.75rem',
+                  backgroundColor: viewMode === 'table' ? '#ffffff' : 'transparent',
+                  color: viewMode === 'table' ? '#0f172a' : '#64748b',
+                  fontSize: '0.78rem',
                   fontWeight: '700',
+                  boxShadow: viewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease'
                 }}
@@ -938,13 +926,14 @@ export default function AdminOrganizationsPage() {
               <button
                 onClick={() => setViewMode('cards')}
                 style={{
-                  padding: '5px 10px',
+                  padding: '6px 12px',
                   borderRadius: '6px',
                   border: 'none',
-                  backgroundColor: viewMode === 'cards' ? 'var(--accent)' : 'transparent',
-                  color: viewMode === 'cards' ? '#013e37' : 'rgba(255, 255, 255, 0.7)',
-                  fontSize: '0.75rem',
+                  backgroundColor: viewMode === 'cards' ? '#ffffff' : 'transparent',
+                  color: viewMode === 'cards' ? '#0f172a' : '#64748b',
+                  fontSize: '0.78rem',
                   fontWeight: '700',
+                  boxShadow: viewMode === 'cards' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease'
                 }}
@@ -958,35 +947,37 @@ export default function AdminOrganizationsPage() {
         {/* ORGANIZATIONS LIST (TABLE OR CARDS) */}
         {loading ? (
           <div
+            className="card"
             style={{
               padding: '60px',
               textAlign: 'center',
-              backgroundColor: 'rgba(255, 255, 255, 0.02)',
+              backgroundColor: '#ffffff',
               borderRadius: '16px',
-              border: '1px solid rgba(255, 255, 255, 0.08)'
+              border: '1.5px solid #e2e8f0'
             }}
           >
-            <RefreshCw size={28} className="animate-spin" style={{ margin: '0 auto 16px', color: 'var(--accent)' }} />
-            <p style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.9rem' }}>
+            <RefreshCw size={28} className="animate-spin" style={{ margin: '0 auto 16px', color: 'var(--primary)' }} />
+            <p style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: '500' }}>
               Chargement des organisations en cours...
             </p>
           </div>
         ) : filteredOrganizations.length === 0 ? (
           <div
+            className="card"
             style={{
               padding: '60px 20px',
               textAlign: 'center',
-              backgroundColor: 'rgba(255, 255, 255, 0.02)',
+              backgroundColor: '#ffffff',
               borderRadius: '16px',
-              border: '1px solid rgba(255, 255, 255, 0.08)'
+              border: '1.5px solid #e2e8f0'
             }}
           >
-            <Building2 size={36} style={{ margin: '0 auto 16px', color: 'rgba(255, 255, 255, 0.3)' }} />
-            <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#ffffff', marginBottom: '8px' }}>
+            <Building2 size={36} style={{ margin: '0 auto 16px', color: '#94a3b8' }} />
+            <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: '#0f172a', marginBottom: '8px' }}>
               Aucune organisation trouvée
             </h3>
-            <p style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.85rem', maxWidth: '420px', margin: '0 auto 20px' }}>
-              {search || statusFilter !== 'all' || planFilter !== 'all'
+            <p style={{ color: '#64748b', fontSize: '0.875rem', maxWidth: '420px', margin: '0 auto 20px' }}>
+              {search || statusFilter !== 'all' || planFilter !== 'all' || countryFilter !== 'all'
                 ? "Aucune organisation ne correspond aux filtres appliqués. Essayez d'élargir votre recherche."
                 : 'Aucune organisation enregistrée sur la plateforme pour le moment.'}
             </p>
@@ -998,16 +989,8 @@ export default function AdminOrganizationsPage() {
                   setPlanFilter('all');
                   setCountryFilter('all');
                 }}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: '#ffffff',
-                  fontSize: '0.8rem',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
+                className="btn btn-secondary"
+                style={{ fontSize: '0.8125rem' }}
               >
                 Réinitialiser les filtres
               </button>
@@ -1016,399 +999,401 @@ export default function AdminOrganizationsPage() {
         ) : viewMode === 'table' ? (
           /* TABLE VIEW */
           <div
+            className="card"
             style={{
               borderRadius: '16px',
-              overflow: 'hidden',
-              backgroundColor: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)'
+              overflowX: 'auto',
+              backgroundColor: '#ffffff',
+              border: '1.5px solid #e2e8f0',
+              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.03)',
+              padding: 0
             }}
           >
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)', backgroundColor: 'rgba(255, 255, 255, 0.03)' }}>
-                    <th style={{ padding: '14px 18px', fontSize: '0.75rem', fontWeight: '700', color: 'rgba(255, 255, 255, 0.6)', textTransform: 'uppercase' }}>
-                      Organisation & Pays
-                    </th>
-                    <th style={{ padding: '14px 18px', fontSize: '0.75rem', fontWeight: '700', color: 'rgba(255, 255, 255, 0.6)', textTransform: 'uppercase' }}>
-                      Contact
-                    </th>
-                    <th style={{ padding: '14px 18px', fontSize: '0.75rem', fontWeight: '700', color: 'rgba(255, 255, 255, 0.6)', textTransform: 'uppercase' }}>
-                      Formule
-                    </th>
-                    <th style={{ padding: '14px 18px', fontSize: '0.75rem', fontWeight: '700', color: 'rgba(255, 255, 255, 0.6)', textTransform: 'uppercase' }}>
-                      Statut
-                    </th>
-                    <th style={{ padding: '14px 18px', fontSize: '0.75rem', fontWeight: '700', color: 'rgba(255, 255, 255, 0.6)', textTransform: 'uppercase' }}>
-                      Biens / Baux
-                    </th>
-                    <th style={{ padding: '14px 18px', fontSize: '0.75rem', fontWeight: '700', color: 'rgba(255, 255, 255, 0.6)', textTransform: 'uppercase' }}>
-                      Équipe
-                    </th>
-                    <th style={{ padding: '14px 18px', fontSize: '0.75rem', fontWeight: '700', color: 'rgba(255, 255, 255, 0.6)', textTransform: 'uppercase', textAlign: 'right' }}>
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredOrganizations.map(org => {
-                    const isDeletionPending = org.settings?.deletionRequested === true;
-                    return (
-                      <tr
-                        key={org.id}
-                        style={{
-                          borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                          transition: 'background-color 0.15s ease'
-                        }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                        }}
-                      >
-                        {/* Name & Country */}
-                        <td style={{ padding: '16px 18px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div
-                              style={{
-                                width: '38px',
-                                height: '38px',
-                                borderRadius: '10px',
-                                backgroundColor: 'rgba(255, 239, 179, 0.12)',
-                                color: 'var(--accent)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontWeight: '800',
-                                fontSize: '0.95rem'
-                              }}
-                            >
-                              {org.name.slice(0, 2).toUpperCase()}
-                            </div>
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '0.9rem', fontWeight: '700', color: '#ffffff' }}>
-                                  {org.name}
-                                </span>
-                                <span title={org.country || 'CI'} style={{ fontSize: '1rem' }}>
-                                  {getCountryFlag(org.country)}
-                                </span>
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
-                                <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.45)' }}>
-                                  {org.city || 'Abidjan'}
-                                </span>
-                                <span style={{ fontSize: '0.65rem', color: 'rgba(255, 255, 255, 0.25)' }}>•</span>
-                                <button
-                                  onClick={() => copyToClipboard(org.id, org.id)}
-                                  title="Copier l'identifiant ID"
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '3px',
-                                    background: 'none',
-                                    border: 'none',
-                                    color: copiedId === org.id ? '#4ade80' : 'rgba(255, 255, 255, 0.4)',
-                                    fontSize: '0.7rem',
-                                    cursor: 'pointer',
-                                    fontFamily: 'monospace'
-                                  }}
-                                >
-                                  {copiedId === org.id ? <Check size={11} /> : <Copy size={11} />}
-                                  {org.id.slice(0, 8)}...
-                                </button>
-                              </div>
-                            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '1.5px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+                  <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: '#475569', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    ORGANISATION & PAYS
+                  </th>
+                  <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: '#475569', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    CONTACT
+                  </th>
+                  <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: '#475569', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    FORMULE
+                  </th>
+                  <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: '#475569', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    STATUT
+                  </th>
+                  <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: '#475569', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    BIENS / BAUX
+                  </th>
+                  <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: '#475569', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    ÉQUIPE
+                  </th>
+                  <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: '#475569', letterSpacing: '0.04em', textTransform: 'uppercase', textAlign: 'right' }}>
+                    ACTIONS
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredOrganizations.map(org => {
+                  const isDeletionPending = org.settings?.deletionRequested === true;
+                  return (
+                    <tr
+                      key={org.id}
+                      style={{
+                        borderBottom: '1px solid #f1f5f9',
+                        transition: 'background-color 0.15s ease'
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.backgroundColor = '#f8fafc';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      {/* Name & Country */}
+                      <td style={{ padding: '16px 20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div
+                            style={{
+                              width: '40px',
+                              height: '40px',
+                              borderRadius: '10px',
+                              backgroundColor: 'rgba(1, 62, 55, 0.08)',
+                              color: 'var(--primary)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: '800',
+                              fontSize: '0.95rem'
+                            }}
+                          >
+                            {org.name.slice(0, 2).toUpperCase()}
                           </div>
-                        </td>
-
-                        {/* Contact */}
-                        <td style={{ padding: '16px 18px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                            {org.email ? (
-                              <a
-                                href={`mailto:${org.email}`}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '6px',
-                                  fontSize: '0.78rem',
-                                  color: 'rgba(255, 255, 255, 0.85)',
-                                  textDecoration: 'none'
-                                }}
-                              >
-                                <Mail size={12} style={{ color: 'rgba(255, 255, 255, 0.4)' }} />
-                                {org.email}
-                              </a>
-                            ) : (
-                              <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.35)' }}>
-                                Aucun email
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: '0.92rem', fontWeight: '700', color: '#0f172a' }}>
+                                {org.name}
                               </span>
-                            )}
-
-                            {org.phone && (
-                              <a
-                                href={`tel:${org.phone}`}
+                              <span title={org.country || 'CI'} style={{ fontSize: '1.05rem' }}>
+                                {getCountryFlag(org.country)}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                {org.city || 'Abidjan'}
+                              </span>
+                              <span style={{ fontSize: '0.65rem', color: '#cbd5e1' }}>•</span>
+                              <button
+                                onClick={() => copyToClipboard(org.id, org.id)}
+                                title="Copier l'identifiant ID"
                                 style={{
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  gap: '6px',
-                                  fontSize: '0.75rem',
-                                  color: 'rgba(255, 255, 255, 0.55)',
-                                  textDecoration: 'none'
+                                  gap: '3px',
+                                  background: 'none',
+                                  border: 'none',
+                                  color: copiedId === org.id ? '#16a34a' : '#94a3b8',
+                                  fontSize: '0.72rem',
+                                  cursor: 'pointer',
+                                  fontFamily: 'monospace'
                                 }}
                               >
-                                <Phone size={11} style={{ color: 'rgba(255, 255, 255, 0.35)' }} />
-                                {org.phone}
-                              </a>
-                            )}
+                                {copiedId === org.id ? <Check size={11} /> : <Copy size={11} />}
+                                {org.id.slice(0, 8)}...
+                              </button>
+                            </div>
                           </div>
-                        </td>
+                        </div>
+                      </td>
 
-                        {/* Plan */}
-                        <td style={{ padding: '16px 18px' }}>
-                          {renderPlanBadge(org.plan)}
-                        </td>
-
-                        {/* Status */}
-                        <td style={{ padding: '16px 18px' }}>
-                          {isDeletionPending ? (
-                            <span
+                      {/* Contact */}
+                      <td style={{ padding: '16px 20px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {org.email ? (
+                            <a
+                              href={`mailto:${org.email}`}
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '5px',
-                                padding: '3px 8px',
-                                borderRadius: '6px',
-                                fontSize: '0.72rem',
-                                fontWeight: '700',
-                                backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                                color: '#fca5a5',
-                                border: '1px solid rgba(239, 68, 68, 0.3)'
+                                gap: '6px',
+                                fontSize: '0.8rem',
+                                color: '#1e293b',
+                                textDecoration: 'none'
                               }}
                             >
-                              <AlertTriangle size={11} />
-                              Rétractation (30j)
-                            </span>
-                          ) : org.isActive ? (
-                            <span
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '5px',
-                                padding: '3px 8px',
-                                borderRadius: '6px',
-                                fontSize: '0.72rem',
-                                fontWeight: '700',
-                                backgroundColor: 'rgba(34, 197, 94, 0.12)',
-                                color: '#4ade80',
-                                border: '1px solid rgba(34, 197, 94, 0.25)'
-                              }}
-                            >
-                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#4ade80' }}></span>
-                              Actif
-                            </span>
+                              <Mail size={13} style={{ color: '#94a3b8' }} />
+                              {org.email}
+                            </a>
                           ) : (
-                            <span
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '5px',
-                                padding: '3px 8px',
-                                borderRadius: '6px',
-                                fontSize: '0.72rem',
-                                fontWeight: '700',
-                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                color: '#f87171',
-                                border: '1px solid rgba(239, 68, 68, 0.2)'
-                              }}
-                            >
-                              <Lock size={11} />
-                              Suspendu
+                            <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                              Aucun email
                             </span>
                           )}
-                        </td>
 
-                        {/* Properties / Contracts Stats */}
-                        <td style={{ padding: '16px 18px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span
+                          {org.phone && (
+                            <a
+                              href={`tel:${org.phone}`}
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '4px',
-                                padding: '3px 7px',
-                                borderRadius: '6px',
-                                backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                                color: '#38bdf8',
-                                fontSize: '0.75rem',
-                                fontWeight: '600'
+                                gap: '6px',
+                                fontSize: '0.78rem',
+                                color: '#64748b',
+                                textDecoration: 'none'
                               }}
-                              title="Biens immobiliers"
                             >
-                              <Home size={12} />
-                              {org._count?.properties ?? 0}
-                            </span>
-                            <span
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '3px 7px',
-                                borderRadius: '6px',
-                                backgroundColor: 'rgba(167, 139, 250, 0.1)',
-                                color: '#a78bfa',
-                                fontSize: '0.75rem',
-                                fontWeight: '600'
-                              }}
-                              title="Baux en cours"
-                            >
-                              <FileText size={12} />
-                              {org._count?.contracts ?? 0}
-                            </span>
-                          </div>
-                        </td>
+                              <Phone size={12} style={{ color: '#94a3b8' }} />
+                              {org.phone}
+                            </a>
+                          )}
+                        </div>
+                      </td>
 
-                        {/* Users / Team */}
-                        <td style={{ padding: '16px 18px' }}>
+                      {/* Plan */}
+                      <td style={{ padding: '16px 20px' }}>
+                        {renderPlanBadge(org.plan)}
+                      </td>
+
+                      {/* Status */}
+                      <td style={{ padding: '16px 20px' }}>
+                        {isDeletionPending ? (
                           <span
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '5px',
-                              fontSize: '0.78rem',
-                              color: 'rgba(255, 255, 255, 0.75)',
-                              fontWeight: '600'
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              fontSize: '0.72rem',
+                              fontWeight: '700',
+                              backgroundColor: '#fff7ed',
+                              color: '#c2410c',
+                              border: '1px solid #fed7aa'
                             }}
                           >
-                            <Users size={13} style={{ color: 'rgba(255, 255, 255, 0.45)' }} />
-                            {org._count?.users ?? 0} membre{(org._count?.users ?? 0) > 1 ? 's' : ''}
+                            <AlertTriangle size={12} />
+                            Rétractation (30j)
                           </span>
-                        </td>
+                        ) : org.isActive ? (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              fontSize: '0.72rem',
+                              fontWeight: '700',
+                              backgroundColor: '#f0fdf4',
+                              color: '#15803d',
+                              border: '1px solid #bbf7d0'
+                            }}
+                          >
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#16a34a' }}></span>
+                            Actif
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              fontSize: '0.72rem',
+                              fontWeight: '700',
+                              backgroundColor: '#fef2f2',
+                              color: '#b91c1c',
+                              border: '1px solid #fecaca'
+                            }}
+                          >
+                            <Lock size={12} />
+                            Suspendu
+                          </span>
+                        )}
+                      </td>
 
-                        {/* Actions */}
-                        <td style={{ padding: '16px 18px', textAlign: 'right' }}>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                            <button
-                              onClick={() => handleOpenStats(org)}
-                              title="Consulter les statistiques complètes de l'organisation"
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '5px',
-                                padding: '6px 11px',
-                                borderRadius: '8px',
-                                backgroundColor: 'rgba(255, 239, 179, 0.12)',
-                                border: '1px solid rgba(255, 239, 179, 0.25)',
-                                color: 'var(--accent)',
-                                fontSize: '0.75rem',
-                                fontWeight: '700',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease'
-                              }}
-                            >
-                              <BarChart3 size={13} />
-                              Stats & Bilan
-                            </button>
+                      {/* Properties / Contracts Stats */}
+                      <td style={{ padding: '16px 20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              padding: '4px 8px',
+                              borderRadius: '6px',
+                              backgroundColor: '#e0f2fe',
+                              color: '#0369a1',
+                              fontSize: '0.78rem',
+                              fontWeight: '700'
+                            }}
+                            title="Biens immobiliers"
+                          >
+                            <Home size={12} />
+                            {org._count?.properties ?? 0}
+                          </span>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              padding: '4px 8px',
+                              borderRadius: '6px',
+                              backgroundColor: '#faf5ff',
+                              color: '#7e22ce',
+                              fontSize: '0.78rem',
+                              fontWeight: '700'
+                            }}
+                            title="Baux en cours"
+                          >
+                            <FileText size={12} />
+                            {org._count?.contracts ?? 0}
+                          </span>
+                        </div>
+                      </td>
 
-                            <button
-                              onClick={e => handleOpenEdit(org, e)}
-                              title="Modifier les informations"
-                              style={{
-                                padding: '6px 8px',
-                                borderRadius: '8px',
-                                backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                                border: '1px solid rgba(255, 255, 255, 0.1)',
-                                color: '#ffffff',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease'
-                              }}
-                            >
-                              <Edit3 size={13} />
-                            </button>
+                      {/* Users / Team */}
+                      <td style={{ padding: '16px 20px' }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            fontSize: '0.8rem',
+                            color: '#334155',
+                            fontWeight: '600'
+                          }}
+                        >
+                          <Users size={14} style={{ color: '#94a3b8' }} />
+                          {org._count?.users ?? 0} membre{(org._count?.users ?? 0) > 1 ? 's' : ''}
+                        </span>
+                      </td>
 
-                            <button
-                              onClick={e => handleToggleActive(org, e)}
-                              title={org.isActive ? 'Suspendre cette organisation' : 'Réactiver cette organisation'}
-                              style={{
-                                padding: '6px 8px',
-                                borderRadius: '8px',
-                                backgroundColor: org.isActive ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-                                border: `1px solid ${org.isActive ? 'rgba(239, 68, 68, 0.25)' : 'rgba(34, 197, 94, 0.25)'}`,
-                                color: org.isActive ? '#f87171' : '#4ade80',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease'
-                              }}
-                            >
-                              {org.isActive ? <Lock size={13} /> : <Unlock size={13} />}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                      {/* Actions */}
+                      <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                          <button
+                            onClick={() => handleOpenStats(org)}
+                            title="Consulter les statistiques complètes"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '7px 12px',
+                              borderRadius: '8px',
+                              backgroundColor: '#f0fdf4',
+                              border: '1px solid #86efac',
+                              color: '#166534',
+                              fontSize: '0.78rem',
+                              fontWeight: '700',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            <BarChart3 size={13} />
+                            Stats & Bilan
+                          </button>
+
+                          <button
+                            onClick={e => handleOpenEdit(org, e)}
+                            title="Modifier les informations"
+                            style={{
+                              padding: '7px 9px',
+                              borderRadius: '8px',
+                              backgroundColor: '#f8fafc',
+                              border: '1px solid #cbd5e1',
+                              color: '#334155',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            <Edit3 size={14} />
+                          </button>
+
+                          <button
+                            onClick={e => handleToggleActive(org, e)}
+                            title={org.isActive ? 'Suspendre cette organisation' : 'Réactiver cette organisation'}
+                            style={{
+                              padding: '7px 9px',
+                              borderRadius: '8px',
+                              backgroundColor: org.isActive ? '#fef2f2' : '#f0fdf4',
+                              border: `1px solid ${org.isActive ? '#fecaca' : '#bbf7d0'}`,
+                              color: org.isActive ? '#dc2626' : '#16a34a',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            {org.isActive ? <Lock size={14} /> : <Unlock size={14} />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         ) : (
           /* CARDS VIEW */
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '18px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
             {filteredOrganizations.map(org => {
               const isDeletionPending = org.settings?.deletionRequested === true;
               return (
                 <div
                   key={org.id}
+                  className="card"
                   style={{
-                    padding: '20px',
+                    padding: '22px',
                     borderRadius: '16px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    backgroundColor: '#ffffff',
+                    border: '1.5px solid #e2e8f0',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
                     gap: '16px',
-                    transition: 'transform 0.2s ease, border-color 0.2s ease'
+                    transition: 'all 0.2s ease'
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = 'rgba(255, 239, 179, 0.3)';
+                    e.currentTarget.style.borderColor = 'var(--primary)';
                     e.currentTarget.style.transform = 'translateY(-2px)';
                   }}
                   onMouseLeave={e => {
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                    e.currentTarget.style.borderColor = '#e2e8f0';
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
                   <div>
                     {/* Top row */}
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', marginBottom: '12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', marginBottom: '14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <div
                           style={{
-                            width: '42px',
-                            height: '42px',
+                            width: '44px',
+                            height: '44px',
                             borderRadius: '12px',
-                            backgroundColor: 'rgba(255, 239, 179, 0.12)',
-                            color: 'var(--accent)',
+                            backgroundColor: 'rgba(1, 62, 55, 0.08)',
+                            color: 'var(--primary)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontWeight: '800',
-                            fontSize: '1rem'
+                            fontSize: '1.05rem'
                           }}
                         >
                           {org.name.slice(0, 2).toUpperCase()}
                         </div>
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <h3 style={{ fontSize: '0.98rem', fontWeight: '800', color: '#ffffff', margin: 0 }}>
+                            <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
                               {org.name}
                             </h3>
-                            <span style={{ fontSize: '1rem' }}>{getCountryFlag(org.country)}</span>
+                            <span style={{ fontSize: '1.1rem' }}>{getCountryFlag(org.country)}</span>
                           </div>
-                          <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.5)' }}>
+                          <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
                             {org.city || 'Abidjan'} • Créée le {new Date(org.createdAt).toLocaleDateString('fr-FR')}
                           </span>
                         </div>
@@ -1425,8 +1410,8 @@ export default function AdminOrganizationsPage() {
                             borderRadius: '6px',
                             fontSize: '0.72rem',
                             fontWeight: '700',
-                            backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                            color: '#fca5a5'
+                            backgroundColor: '#fff7ed',
+                            color: '#c2410c'
                           }}
                         >
                           Rétractation (30j)
@@ -1438,8 +1423,8 @@ export default function AdminOrganizationsPage() {
                             borderRadius: '6px',
                             fontSize: '0.72rem',
                             fontWeight: '700',
-                            backgroundColor: 'rgba(34, 197, 94, 0.12)',
-                            color: '#4ade80'
+                            backgroundColor: '#f0fdf4',
+                            color: '#15803d'
                           }}
                         >
                           Actif
@@ -1451,8 +1436,8 @@ export default function AdminOrganizationsPage() {
                             borderRadius: '6px',
                             fontSize: '0.72rem',
                             fontWeight: '700',
-                            backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                            color: '#f87171'
+                            backgroundColor: '#fef2f2',
+                            color: '#b91c1c'
                           }}
                         >
                           Suspendu
@@ -1461,16 +1446,16 @@ export default function AdminOrganizationsPage() {
                     </div>
 
                     {/* Contact snippet */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.7)' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.8rem', color: '#334155' }}>
                       {org.email && (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                          <Mail size={12} style={{ color: 'rgba(255, 255, 255, 0.4)' }} />
+                          <Mail size={13} style={{ color: '#94a3b8' }} />
                           {org.email}
                         </span>
                       )}
                       {org.phone && (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                          <Phone size={12} style={{ color: 'rgba(255, 255, 255, 0.4)' }} />
+                          <Phone size={13} style={{ color: '#94a3b8' }} />
                           {org.phone}
                         </span>
                       )}
@@ -1483,36 +1468,36 @@ export default function AdminOrganizationsPage() {
                         gridTemplateColumns: 'repeat(3, 1fr)',
                         gap: '8px',
                         padding: '12px',
-                        borderRadius: '10px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                        border: '1px solid rgba(255, 255, 255, 0.05)',
-                        marginTop: '14px',
+                        borderRadius: '12px',
+                        backgroundColor: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        marginTop: '16px',
                         textAlign: 'center'
                       }}
                     >
                       <div>
-                        <div style={{ fontSize: '1rem', fontWeight: '800', color: '#38bdf8' }}>
+                        <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0284c7' }}>
                           {org._count?.properties ?? 0}
                         </div>
-                        <div style={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.5)' }}>Biens</div>
+                        <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '600' }}>Biens</div>
                       </div>
                       <div>
-                        <div style={{ fontSize: '1rem', fontWeight: '800', color: '#a78bfa' }}>
+                        <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#7e22ce' }}>
                           {org._count?.contracts ?? 0}
                         </div>
-                        <div style={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.5)' }}>Baux</div>
+                        <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '600' }}>Baux</div>
                       </div>
                       <div>
-                        <div style={{ fontSize: '1rem', fontWeight: '800', color: '#4ade80' }}>
+                        <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#16a34a' }}>
                           {org._count?.users ?? 0}
                         </div>
-                        <div style={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.5)' }}>Membres</div>
+                        <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '600' }}>Membres</div>
                       </div>
                     </div>
                   </div>
 
                   {/* Card Actions */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '12px', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
                     <button
                       onClick={() => handleOpenStats(org)}
                       style={{
@@ -1523,9 +1508,9 @@ export default function AdminOrganizationsPage() {
                         gap: '6px',
                         padding: '8px',
                         borderRadius: '8px',
-                        backgroundColor: 'rgba(255, 239, 179, 0.12)',
-                        border: '1px solid rgba(255, 239, 179, 0.25)',
-                        color: 'var(--accent)',
+                        backgroundColor: '#f0fdf4',
+                        border: '1px solid #86efac',
+                        color: '#166534',
                         fontSize: '0.78rem',
                         fontWeight: '700',
                         cursor: 'pointer'
@@ -1539,9 +1524,9 @@ export default function AdminOrganizationsPage() {
                       style={{
                         padding: '8px 10px',
                         borderRadius: '8px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        color: '#ffffff',
+                        backgroundColor: '#f8fafc',
+                        border: '1px solid #cbd5e1',
+                        color: '#334155',
                         cursor: 'pointer'
                       }}
                     >
@@ -1552,9 +1537,9 @@ export default function AdminOrganizationsPage() {
                       style={{
                         padding: '8px 10px',
                         borderRadius: '8px',
-                        backgroundColor: org.isActive ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-                        border: `1px solid ${org.isActive ? 'rgba(239, 68, 68, 0.25)' : 'rgba(34, 197, 94, 0.25)'}`,
-                        color: org.isActive ? '#f87171' : '#4ade80',
+                        backgroundColor: org.isActive ? '#fef2f2' : '#f0fdf4',
+                        border: `1px solid ${org.isActive ? '#fecaca' : '#bbf7d0'}`,
+                        color: org.isActive ? '#dc2626' : '#16a34a',
                         cursor: 'pointer'
                       }}
                     >
@@ -1567,14 +1552,14 @@ export default function AdminOrganizationsPage() {
           </div>
         )}
 
-        {/* MODAL 1: STATS & DETAILS DRAWER / MODAL */}
+        {/* MODAL 1: STATS & DETAILS MODAL */}
         {selectedOrgForStats && (
           <div
             style={{
               position: 'fixed',
               inset: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.75)',
-              backdropFilter: 'blur(6px)',
+              backgroundColor: 'rgba(15, 23, 42, 0.6)',
+              backdropFilter: 'blur(4px)',
               zIndex: 999,
               display: 'flex',
               alignItems: 'center',
@@ -1586,13 +1571,13 @@ export default function AdminOrganizationsPage() {
             <div
               style={{
                 width: '100%',
-                maxWidth: '850px',
+                maxWidth: '860px',
                 maxHeight: '90vh',
                 overflowY: 'auto',
-                backgroundColor: '#05221e',
+                backgroundColor: '#ffffff',
                 borderRadius: '20px',
-                border: '1px solid rgba(255, 239, 179, 0.2)',
-                boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
+                border: '1px solid #cbd5e1',
+                boxShadow: '0 25px 60px rgba(0, 0, 0, 0.2)',
                 padding: '28px',
                 display: 'flex',
                 flexDirection: 'column',
@@ -1601,19 +1586,19 @@ export default function AdminOrganizationsPage() {
               onClick={e => e.stopPropagation()}
             >
               {/* Header */}
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                   <div
                     style={{
                       width: '52px',
                       height: '52px',
                       borderRadius: '14px',
-                      backgroundColor: 'rgba(255, 239, 179, 0.15)',
-                      color: 'var(--accent)',
+                      backgroundColor: 'rgba(1, 62, 55, 0.08)',
+                      color: 'var(--primary)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontWeight: '800',
+                      fontWeight: '900',
                       fontSize: '1.25rem'
                     }}
                   >
@@ -1621,16 +1606,16 @@ export default function AdminOrganizationsPage() {
                   </div>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#ffffff', margin: 0 }}>
+                      <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
                         {selectedOrgForStats.name}
                       </h2>
                       <span style={{ fontSize: '1.2rem' }}>{getCountryFlag(selectedOrgForStats.country)}</span>
                       {renderPlanBadge(selectedOrgForStats.plan)}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.6)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', fontSize: '0.8rem', color: '#64748b' }}>
                       <span>{selectedOrgForStats.city || 'Abidjan'}, {selectedOrgForStats.country || 'CI'}</span>
                       <span>•</span>
-                      <span>ID: <code style={{ color: 'var(--accent)' }}>{selectedOrgForStats.id}</code></span>
+                      <span>ID: <code style={{ color: 'var(--primary)', fontWeight: '600' }}>{selectedOrgForStats.id}</code></span>
                     </div>
                   </div>
                 </div>
@@ -1638,120 +1623,117 @@ export default function AdminOrganizationsPage() {
                 <button
                   onClick={() => setSelectedOrgForStats(null)}
                   style={{
-                    background: 'none',
+                    background: '#f1f5f9',
                     border: 'none',
-                    color: 'rgba(255, 255, 255, 0.5)',
+                    color: '#64748b',
                     cursor: 'pointer',
-                    padding: '6px',
+                    padding: '8px',
                     borderRadius: '8px'
                   }}
                 >
-                  <X size={20} />
+                  <X size={18} />
                 </button>
               </div>
 
               {statsLoading ? (
                 <div style={{ padding: '60px', textAlign: 'center' }}>
-                  <RefreshCw size={28} className="animate-spin" style={{ margin: '0 auto 12px', color: 'var(--accent)' }} />
-                  <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.875rem' }}>Calcul des statistiques de l'organisation...</p>
+                  <RefreshCw size={28} className="animate-spin" style={{ margin: '0 auto 12px', color: 'var(--primary)' }} />
+                  <p style={{ color: '#64748b', fontSize: '0.875rem' }}>Calcul des statistiques de l'organisation...</p>
                 </div>
               ) : statsData ? (
                 <>
-                  {/* METRICS ROW 1 : PATRIMOINE & OCCUPATION */}
+                  {/* METRICS ROW 1 : PATRIMOINE */}
                   <div>
-                    <h4 style={{ fontSize: '0.85rem', fontWeight: '700', color: 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '12px' }}>
+                    <h4 style={{ fontSize: '0.82rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '12px' }}>
                       1. Parc Immobilier & Taux d'Occupation
                     </h4>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
-                      <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                        <span style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.5)' }}>Total Biens</span>
-                        <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#ffffff' }}>
+                      <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                        <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '600' }}>Total Biens</span>
+                        <div style={{ fontSize: '1.45rem', fontWeight: '900', color: '#0f172a' }}>
                           {statsData.properties.total}
                         </div>
                       </div>
-                      <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                        <span style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.5)' }}>Biens Occupés</span>
-                        <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#4ade80' }}>
+                      <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                        <span style={{ fontSize: '0.72rem', color: '#166534', fontWeight: '600' }}>Biens Occupés</span>
+                        <div style={{ fontSize: '1.45rem', fontWeight: '900', color: '#15803d' }}>
                           {statsData.properties.occupied}
                         </div>
                       </div>
-                      <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                        <span style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.5)' }}>Vacants / Dispos</span>
-                        <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#38bdf8' }}>
+                      <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#f0f9ff', border: '1px solid #bae6fd' }}>
+                        <span style={{ fontSize: '0.72rem', color: '#0369a1', fontWeight: '600' }}>Vacants / Dispos</span>
+                        <div style={{ fontSize: '1.45rem', fontWeight: '900', color: '#0284c7' }}>
                           {statsData.properties.available}
                         </div>
                       </div>
-                      <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                        <span style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.5)' }}>Taux d'Occupation</span>
-                        <div style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--accent)' }}>
+                      <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#fefce8', border: '1px solid #fef08a' }}>
+                        <span style={{ fontSize: '0.72rem', color: '#854d0e', fontWeight: '600' }}>Taux d'Occupation</span>
+                        <div style={{ fontSize: '1.45rem', fontWeight: '900', color: '#b45309' }}>
                           {statsData.properties.occupancyRate}%
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* METRICS ROW 2 : FINANCES & LOYERS */}
+                  {/* METRICS ROW 2 : FINANCES */}
                   <div>
-                    <h4 style={{ fontSize: '0.85rem', fontWeight: '700', color: 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '12px' }}>
+                    <h4 style={{ fontSize: '0.82rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '12px' }}>
                       2. Flux Financiers & Recouvrement
                     </h4>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
-                      {/* Total Encaissé */}
-                      <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: 'rgba(34, 197, 94, 0.06)', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
-                        <span style={{ fontSize: '0.75rem', color: '#86efac', fontWeight: '600' }}>Total Loyers Validés & Encaissés</span>
-                        <div style={{ fontSize: '1.35rem', fontWeight: '800', color: '#4ade80', marginTop: '4px' }}>
+                      <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#15803d', fontWeight: '700' }}>Total Loyers Validés & Encaissés</span>
+                        <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#166534', marginTop: '4px' }}>
                           {formatFcfa(statsData.payments.totalCollectedAmount)}
                         </div>
-                        <span style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.5)' }}>
+                        <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
                           {statsData.payments.validatedCount} paiement(s) validé(s)
                         </span>
                       </div>
 
-                      {/* Impayés / Retards */}
-                      <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                        <span style={{ fontSize: '0.75rem', color: '#fca5a5', fontWeight: '600' }}>Factures en Retard / Impayées</span>
-                        <div style={{ fontSize: '1.35rem', fontWeight: '800', color: '#f87171', marginTop: '4px' }}>
+                      <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#fef2f2', border: '1px solid #fecaca' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#b91c1c', fontWeight: '700' }}>Factures en Retard / Impayées</span>
+                        <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#dc2626', marginTop: '4px' }}>
                           {formatFcfa(statsData.invoices.overdueAmount)}
                         </div>
-                        <span style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.5)' }}>
+                        <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
                           {statsData.invoices.overdueCount} facture(s) en souffrance
                         </span>
                       </div>
 
-                      {/* En attente */}
-                      <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: 'rgba(245, 158, 11, 0.06)', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-                        <span style={{ fontSize: '0.75rem', color: '#fde68a', fontWeight: '600' }}>Factures en Attente d'Échéance</span>
-                        <div style={{ fontSize: '1.35rem', fontWeight: '800', color: '#fbbf24', marginTop: '4px' }}>
+                      <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#fffbeb', border: '1px solid #fde68a' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: '700' }}>Factures en Attente d'Échéance</span>
+                        <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#d97706', marginTop: '4px' }}>
                           {formatFcfa(statsData.invoices.pendingAmount)}
                         </div>
-                        <span style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.5)' }}>
+                        <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
                           {statsData.invoices.pendingCount} facture(s) en cours
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* METRICS ROW 3 : BAUX & LOCATAIRES */}
+                  {/* METRICS ROW 3 : BAUX */}
                   <div>
-                    <h4 style={{ fontSize: '0.85rem', fontWeight: '700', color: 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '12px' }}>
+                    <h4 style={{ fontSize: '0.82rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '12px' }}>
                       3. Locataires & Baux
                     </h4>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
-                      <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                        <span style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.5)' }}>Locataires Inscrits</span>
-                        <div style={{ fontSize: '1.3rem', fontWeight: '800', color: '#ffffff' }}>
+                      <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                        <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '600' }}>Locataires Inscrits</span>
+                        <div style={{ fontSize: '1.35rem', fontWeight: '900', color: '#0f172a' }}>
                           {statsData.tenants}
                         </div>
                       </div>
-                      <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                        <span style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.5)' }}>Contrats Actifs</span>
-                        <div style={{ fontSize: '1.3rem', fontWeight: '800', color: '#a78bfa' }}>
+                      <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#faf5ff', border: '1px solid #f3e8ff' }}>
+                        <span style={{ fontSize: '0.72rem', color: '#7e22ce', fontWeight: '600' }}>Contrats Actifs</span>
+                        <div style={{ fontSize: '1.35rem', fontWeight: '900', color: '#6b21a8' }}>
                           {statsData.contracts.active}
                         </div>
                       </div>
-                      <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                        <span style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.5)' }}>Historique Baux</span>
-                        <div style={{ fontSize: '1.3rem', fontWeight: '800', color: '#cbd5e1' }}>
+                      <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                        <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '600' }}>Historique Baux</span>
+                        <div style={{ fontSize: '1.35rem', fontWeight: '900', color: '#0f172a' }}>
                           {statsData.contracts.total}
                         </div>
                       </div>
@@ -1760,7 +1742,7 @@ export default function AdminOrganizationsPage() {
 
                   {/* USERS / TEAM LIST */}
                   <div>
-                    <h4 style={{ fontSize: '0.85rem', fontWeight: '700', color: 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '12px' }}>
+                    <h4 style={{ fontSize: '0.82rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '12px' }}>
                       4. Membres de l'Équipe ({selectedOrgForStats.users?.length ?? statsData.users})
                     </h4>
                     {selectedOrgForStats.users && selectedOrgForStats.users.length > 0 ? (
@@ -1772,35 +1754,35 @@ export default function AdminOrganizationsPage() {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
-                              padding: '10px 14px',
+                              padding: '12px 16px',
                               borderRadius: '10px',
-                              backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                              border: '1px solid rgba(255, 255, 255, 0.05)'
+                              backgroundColor: '#f8fafc',
+                              border: '1px solid #e2e8f0'
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                               <div
                                 style={{
-                                  width: '32px',
-                                  height: '32px',
+                                  width: '34px',
+                                  height: '34px',
                                   borderRadius: '8px',
-                                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                                  backgroundColor: '#e2e8f0',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  fontSize: '0.75rem',
-                                  fontWeight: '700',
-                                  color: '#ffffff'
+                                  fontSize: '0.78rem',
+                                  fontWeight: '800',
+                                  color: '#334155'
                                 }}
                               >
                                 {u.firstName.slice(0, 1)}
                                 {u.lastName.slice(0, 1)}
                               </div>
                               <div>
-                                <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#ffffff' }}>
+                                <span style={{ fontSize: '0.88rem', fontWeight: '700', color: '#0f172a' }}>
                                   {u.firstName} {u.lastName}
                                 </span>
-                                <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.45)' }}>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
                                   {u.email} {u.phone ? `• ${u.phone}` : ''}
                                 </div>
                               </div>
@@ -1812,8 +1794,8 @@ export default function AdminOrganizationsPage() {
                                   borderRadius: '6px',
                                   fontSize: '0.7rem',
                                   fontWeight: '700',
-                                  backgroundColor: 'rgba(255, 239, 179, 0.1)',
-                                  color: 'var(--accent)',
+                                  backgroundColor: '#f1f5f9',
+                                  color: '#334155',
                                   textTransform: 'uppercase'
                                 }}
                               >
@@ -1824,7 +1806,7 @@ export default function AdminOrganizationsPage() {
                                   width: '8px',
                                   height: '8px',
                                   borderRadius: '50%',
-                                  backgroundColor: u.isActive ? '#4ade80' : '#f87171'
+                                  backgroundColor: u.isActive ? '#16a34a' : '#dc2626'
                                 }}
                                 title={u.isActive ? 'Compte actif' : 'Compte inactif'}
                               />
@@ -1833,40 +1815,32 @@ export default function AdminOrganizationsPage() {
                         ))}
                       </div>
                     ) : (
-                      <p style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.4)' }}>
+                      <p style={{ fontSize: '0.84rem', color: '#94a3b8' }}>
                         Aucun utilisateur spécifique listé.
                       </p>
                     )}
                   </div>
 
                   {/* BOTTOM ACTION BUTTONS */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '18px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '18px' }}>
                     <button
                       onClick={() => {
                         handleOpenEdit(selectedOrgForStats);
                         setSelectedOrgForStats(null);
                       }}
-                      style={{
-                        padding: '9px 16px',
-                        borderRadius: '10px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                        color: '#ffffff',
-                        fontSize: '0.8125rem',
-                        fontWeight: '600',
-                        cursor: 'pointer'
-                      }}
+                      className="btn btn-secondary"
+                      style={{ fontSize: '0.8125rem' }}
                     >
                       Modifier l'organisation
                     </button>
                     <button
                       onClick={() => handleToggleActive(selectedOrgForStats)}
                       style={{
-                        padding: '9px 18px',
+                        padding: '10px 18px',
                         borderRadius: '10px',
-                        backgroundColor: selectedOrgForStats.isActive ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-                        border: `1px solid ${selectedOrgForStats.isActive ? 'rgba(239, 68, 68, 0.4)' : 'rgba(34, 197, 94, 0.4)'}`,
-                        color: selectedOrgForStats.isActive ? '#fca5a5' : '#86efac',
+                        backgroundColor: selectedOrgForStats.isActive ? '#fef2f2' : '#f0fdf4',
+                        border: `1.5px solid ${selectedOrgForStats.isActive ? '#fecaca' : '#bbf7d0'}`,
+                        color: selectedOrgForStats.isActive ? '#dc2626' : '#16a34a',
                         fontSize: '0.8125rem',
                         fontWeight: '700',
                         cursor: 'pointer'
@@ -1887,8 +1861,8 @@ export default function AdminOrganizationsPage() {
             style={{
               position: 'fixed',
               inset: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.75)',
-              backdropFilter: 'blur(6px)',
+              backgroundColor: 'rgba(15, 23, 42, 0.6)',
+              backdropFilter: 'blur(4px)',
               zIndex: 999,
               display: 'flex',
               alignItems: 'center',
@@ -1901,10 +1875,10 @@ export default function AdminOrganizationsPage() {
               style={{
                 width: '100%',
                 maxWidth: '560px',
-                backgroundColor: '#05221e',
+                backgroundColor: '#ffffff',
                 borderRadius: '20px',
-                border: '1px solid rgba(255, 239, 179, 0.2)',
-                boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
+                border: '1px solid #cbd5e1',
+                boxShadow: '0 25px 60px rgba(0, 0, 0, 0.2)',
                 padding: '28px',
                 display: 'flex',
                 flexDirection: 'column',
@@ -1914,22 +1888,22 @@ export default function AdminOrganizationsPage() {
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Building2 size={22} style={{ color: 'var(--accent)' }} />
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#ffffff', margin: 0 }}>
+                  <Building2 size={22} style={{ color: 'var(--primary)' }} />
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
                     Créer une Organisation
                   </h3>
                 </div>
                 <button
                   onClick={() => setCreateModalOpen(false)}
-                  style={{ background: 'none', border: 'none', color: 'rgba(255, 255, 255, 0.5)', cursor: 'pointer' }}
+                  style={{ background: '#f1f5f9', border: 'none', color: '#64748b', cursor: 'pointer', padding: '6px', borderRadius: '8px' }}
                 >
-                  <X size={20} />
+                  <X size={18} />
                 </button>
               </div>
 
               <form onSubmit={handleSubmitCreate} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '6px' }}>
+                  <label className="form-label">
                     Nom de l'organisation / Agence *
                   </label>
                   <input
@@ -1938,78 +1912,51 @@ export default function AdminOrganizationsPage() {
                     placeholder="Ex: Agence Immobilière Prestige, SCI Les Palmiers..."
                     value={createForm.name}
                     onChange={e => setCreateForm({ ...createForm, name: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      borderRadius: '10px',
-                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                      border: '1px solid rgba(255, 255, 255, 0.12)',
-                      color: '#ffffff',
-                      fontSize: '0.875rem',
-                      outline: 'none'
-                    }}
+                    className="form-control"
                   />
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '6px' }}>
+                    <label className="form-label">
                       Formule / Abonnement
                     </label>
                     <select
                       value={createForm.plan}
                       onChange={e => setCreateForm({ ...createForm, plan: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '10px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        color: '#ffffff',
-                        fontSize: '0.875rem',
-                        outline: 'none'
-                      }}
+                      className="form-control"
                     >
-                      <option value="starter" style={{ backgroundColor: '#0a2e29' }}>Starter (Gratuit)</option>
-                      <option value="pro" style={{ backgroundColor: '#0a2e29' }}>Pro / Sérénité</option>
-                      <option value="expert" style={{ backgroundColor: '#0a2e29' }}>Expert / Agence</option>
+                      <option value="starter">Starter (Gratuit)</option>
+                      <option value="pro">Pro / Sérénité</option>
+                      <option value="expert">Expert / Agence</option>
                     </select>
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '6px' }}>
+                    <label className="form-label">
                       Pays
                     </label>
                     <select
                       value={createForm.country}
                       onChange={e => setCreateForm({ ...createForm, country: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '10px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        color: '#ffffff',
-                        fontSize: '0.875rem',
-                        outline: 'none'
-                      }}
+                      className="form-control"
                     >
-                      <option value="CI" style={{ backgroundColor: '#0a2e29' }}>🇨🇮 Côte d'Ivoire</option>
-                      <option value="SN" style={{ backgroundColor: '#0a2e29' }}>🇸🇳 Sénégal</option>
-                      <option value="ML" style={{ backgroundColor: '#0a2e29' }}>🇲🇱 Mali</option>
-                      <option value="BF" style={{ backgroundColor: '#0a2e29' }}>🇧🇫 Burkina Faso</option>
-                      <option value="GN" style={{ backgroundColor: '#0a2e29' }}>🇬🇳 Guinée</option>
-                      <option value="BJ" style={{ backgroundColor: '#0a2e29' }}>🇧🇯 Bénin</option>
-                      <option value="TG" style={{ backgroundColor: '#0a2e29' }}>🇹🇬 Togo</option>
-                      <option value="CM" style={{ backgroundColor: '#0a2e29' }}>🇨🇲 Cameroun</option>
-                      <option value="FR" style={{ backgroundColor: '#0a2e29' }}>🇫🇷 France</option>
+                      <option value="CI">🇨🇮 Côte d'Ivoire</option>
+                      <option value="SN">🇸🇳 Sénégal</option>
+                      <option value="ML">🇲🇱 Mali</option>
+                      <option value="BF">🇧🇫 Burkina Faso</option>
+                      <option value="GN">🇬🇳 Guinée</option>
+                      <option value="BJ">🇧🇯 Bénin</option>
+                      <option value="TG">🇹🇬 Togo</option>
+                      <option value="CM">🇨🇲 Cameroun</option>
+                      <option value="FR">🇫🇷 France</option>
                     </select>
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '6px' }}>
+                    <label className="form-label">
                       Email officiel
                     </label>
                     <input
@@ -2017,21 +1964,12 @@ export default function AdminOrganizationsPage() {
                       placeholder="contact@agence.com"
                       value={createForm.email}
                       onChange={e => setCreateForm({ ...createForm, email: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '10px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        color: '#ffffff',
-                        fontSize: '0.875rem',
-                        outline: 'none'
-                      }}
+                      className="form-control"
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '6px' }}>
+                    <label className="form-label">
                       Téléphone
                     </label>
                     <input
@@ -2039,23 +1977,14 @@ export default function AdminOrganizationsPage() {
                       placeholder="+225 0700000000"
                       value={createForm.phone}
                       onChange={e => setCreateForm({ ...createForm, phone: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '10px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        color: '#ffffff',
-                        fontSize: '0.875rem',
-                        outline: 'none'
-                      }}
+                      className="form-control"
                     />
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '6px' }}>
+                    <label className="form-label">
                       Ville
                     </label>
                     <input
@@ -2063,21 +1992,12 @@ export default function AdminOrganizationsPage() {
                       placeholder="Abidjan, Dakar..."
                       value={createForm.city}
                       onChange={e => setCreateForm({ ...createForm, city: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '10px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        color: '#ffffff',
-                        fontSize: '0.875rem',
-                        outline: 'none'
-                      }}
+                      className="form-control"
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '6px' }}>
+                    <label className="form-label">
                       Adresse physique
                     </label>
                     <input
@@ -2085,16 +2005,7 @@ export default function AdminOrganizationsPage() {
                       placeholder="Cocody, Plateau, Rue 12..."
                       value={createForm.address}
                       onChange={e => setCreateForm({ ...createForm, address: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '10px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        color: '#ffffff',
-                        fontSize: '0.875rem',
-                        outline: 'none'
-                      }}
+                      className="form-control"
                     />
                   </div>
                 </div>
@@ -2103,35 +2014,15 @@ export default function AdminOrganizationsPage() {
                   <button
                     type="button"
                     onClick={() => setCreateModalOpen(false)}
-                    style={{
-                      padding: '10px 16px',
-                      borderRadius: '10px',
-                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      color: 'rgba(255, 255, 255, 0.8)',
-                      fontSize: '0.8125rem',
-                      fontWeight: '600',
-                      cursor: 'pointer'
-                    }}
+                    className="btn btn-secondary"
                   >
                     Annuler
                   </button>
                   <button
                     type="submit"
                     disabled={createLoading}
-                    style={{
-                      padding: '10px 20px',
-                      borderRadius: '10px',
-                      backgroundColor: 'var(--accent)',
-                      border: 'none',
-                      color: '#013e37',
-                      fontSize: '0.8125rem',
-                      fontWeight: '700',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
+                    className="btn btn-primary"
+                    style={{ backgroundColor: 'var(--primary)', color: '#ffffff' }}
                   >
                     {createLoading ? <RefreshCw size={15} className="animate-spin" /> : <Check size={16} />}
                     Créer l'organisation
@@ -2148,8 +2039,8 @@ export default function AdminOrganizationsPage() {
             style={{
               position: 'fixed',
               inset: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.75)',
-              backdropFilter: 'blur(6px)',
+              backgroundColor: 'rgba(15, 23, 42, 0.6)',
+              backdropFilter: 'blur(4px)',
               zIndex: 999,
               display: 'flex',
               alignItems: 'center',
@@ -2162,10 +2053,10 @@ export default function AdminOrganizationsPage() {
               style={{
                 width: '100%',
                 maxWidth: '560px',
-                backgroundColor: '#05221e',
+                backgroundColor: '#ffffff',
                 borderRadius: '20px',
-                border: '1px solid rgba(255, 239, 179, 0.2)',
-                boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
+                border: '1px solid #cbd5e1',
+                boxShadow: '0 25px 60px rgba(0, 0, 0, 0.2)',
                 padding: '28px',
                 display: 'flex',
                 flexDirection: 'column',
@@ -2175,22 +2066,22 @@ export default function AdminOrganizationsPage() {
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Edit3 size={20} style={{ color: 'var(--accent)' }} />
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#ffffff', margin: 0 }}>
+                  <Edit3 size={20} style={{ color: 'var(--primary)' }} />
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
                     Modifier l'Organisation
                   </h3>
                 </div>
                 <button
                   onClick={() => setEditModalOpen(false)}
-                  style={{ background: 'none', border: 'none', color: 'rgba(255, 255, 255, 0.5)', cursor: 'pointer' }}
+                  style={{ background: '#f1f5f9', border: 'none', color: '#64748b', cursor: 'pointer', padding: '6px', borderRadius: '8px' }}
                 >
-                  <X size={20} />
+                  <X size={18} />
                 </button>
               </div>
 
               <form onSubmit={handleSubmitEdit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '6px' }}>
+                  <label className="form-label">
                     Nom de l'organisation
                   </label>
                   <input
@@ -2198,161 +2089,98 @@ export default function AdminOrganizationsPage() {
                     required
                     value={editForm.name}
                     onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      borderRadius: '10px',
-                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                      border: '1px solid rgba(255, 255, 255, 0.12)',
-                      color: '#ffffff',
-                      fontSize: '0.875rem',
-                      outline: 'none'
-                    }}
+                    className="form-control"
                   />
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '6px' }}>
+                    <label className="form-label">
                       Formule / Abonnement
                     </label>
                     <select
                       value={editForm.plan}
                       onChange={e => setEditForm({ ...editForm, plan: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '10px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        color: '#ffffff',
-                        fontSize: '0.875rem',
-                        outline: 'none'
-                      }}
+                      className="form-control"
                     >
-                      <option value="starter" style={{ backgroundColor: '#0a2e29' }}>Starter (Gratuit)</option>
-                      <option value="pro" style={{ backgroundColor: '#0a2e29' }}>Pro / Sérénité</option>
-                      <option value="expert" style={{ backgroundColor: '#0a2e29' }}>Expert / Agence</option>
+                      <option value="starter">Starter (Gratuit)</option>
+                      <option value="pro">Pro / Sérénité</option>
+                      <option value="expert">Expert / Agence</option>
                     </select>
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '6px' }}>
+                    <label className="form-label">
                       Statut d'accès
                     </label>
                     <select
                       value={editForm.isActive ? 'active' : 'suspended'}
                       onChange={e => setEditForm({ ...editForm, isActive: e.target.value === 'active' })}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '10px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        color: '#ffffff',
-                        fontSize: '0.875rem',
-                        outline: 'none'
-                      }}
+                      className="form-control"
                     >
-                      <option value="active" style={{ backgroundColor: '#0a2e29' }}>🟢 Actif (Accès autorisé)</option>
-                      <option value="suspended" style={{ backgroundColor: '#0a2e29' }}>🔴 Suspendu (Accès bloqué)</option>
+                      <option value="active">🟢 Actif (Accès autorisé)</option>
+                      <option value="suspended">🔴 Suspendu (Accès bloqué)</option>
                     </select>
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '6px' }}>
+                    <label className="form-label">
                       Email
                     </label>
                     <input
                       type="email"
                       value={editForm.email}
                       onChange={e => setEditForm({ ...editForm, email: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '10px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        color: '#ffffff',
-                        fontSize: '0.875rem',
-                        outline: 'none'
-                      }}
+                      className="form-control"
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '6px' }}>
+                    <label className="form-label">
                       Téléphone
                     </label>
                     <input
                       type="tel"
                       value={editForm.phone}
                       onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '10px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        color: '#ffffff',
-                        fontSize: '0.875rem',
-                        outline: 'none'
-                      }}
+                      className="form-control"
                     />
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '6px' }}>
+                    <label className="form-label">
                       Ville
                     </label>
                     <input
                       type="text"
                       value={editForm.city}
                       onChange={e => setEditForm({ ...editForm, city: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '10px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        color: '#ffffff',
-                        fontSize: '0.875rem',
-                        outline: 'none'
-                      }}
+                      className="form-control"
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '6px' }}>
+                    <label className="form-label">
                       Pays
                     </label>
                     <select
                       value={editForm.country}
                       onChange={e => setEditForm({ ...editForm, country: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '10px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        color: '#ffffff',
-                        fontSize: '0.875rem',
-                        outline: 'none'
-                      }}
+                      className="form-control"
                     >
-                      <option value="CI" style={{ backgroundColor: '#0a2e29' }}>🇨🇮 Côte d'Ivoire</option>
-                      <option value="SN" style={{ backgroundColor: '#0a2e29' }}>🇸🇳 Sénégal</option>
-                      <option value="ML" style={{ backgroundColor: '#0a2e29' }}>🇲🇱 Mali</option>
-                      <option value="BF" style={{ backgroundColor: '#0a2e29' }}>🇧🇫 Burkina Faso</option>
-                      <option value="GN" style={{ backgroundColor: '#0a2e29' }}>🇬🇳 Guinée</option>
-                      <option value="BJ" style={{ backgroundColor: '#0a2e29' }}>🇧🇯 Bénin</option>
-                      <option value="TG" style={{ backgroundColor: '#0a2e29' }}>🇹🇬 Togo</option>
-                      <option value="CM" style={{ backgroundColor: '#0a2e29' }}>🇨🇲 Cameroun</option>
-                      <option value="FR" style={{ backgroundColor: '#0a2e29' }}>🇫🇷 France</option>
+                      <option value="CI">🇨🇮 Côte d'Ivoire</option>
+                      <option value="SN">🇸🇳 Sénégal</option>
+                      <option value="ML">🇲🇱 Mali</option>
+                      <option value="BF">🇧🇫 Burkina Faso</option>
+                      <option value="GN">🇬🇳 Guinée</option>
+                      <option value="BJ">🇧🇯 Bénin</option>
+                      <option value="TG">🇹🇬 Togo</option>
+                      <option value="CM">🇨🇲 Cameroun</option>
+                      <option value="FR">🇫🇷 France</option>
                     </select>
                   </div>
                 </div>
@@ -2361,35 +2189,15 @@ export default function AdminOrganizationsPage() {
                   <button
                     type="button"
                     onClick={() => setEditModalOpen(false)}
-                    style={{
-                      padding: '10px 16px',
-                      borderRadius: '10px',
-                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      color: 'rgba(255, 255, 255, 0.8)',
-                      fontSize: '0.8125rem',
-                      fontWeight: '600',
-                      cursor: 'pointer'
-                    }}
+                    className="btn btn-secondary"
                   >
                     Annuler
                   </button>
                   <button
                     type="submit"
                     disabled={editLoading}
-                    style={{
-                      padding: '10px 20px',
-                      borderRadius: '10px',
-                      backgroundColor: 'var(--accent)',
-                      border: 'none',
-                      color: '#013e37',
-                      fontSize: '0.8125rem',
-                      fontWeight: '700',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
+                    className="btn btn-primary"
+                    style={{ backgroundColor: 'var(--primary)', color: '#ffffff' }}
                   >
                     {editLoading ? <RefreshCw size={15} className="animate-spin" /> : <Check size={16} />}
                     Enregistrer les modifications
