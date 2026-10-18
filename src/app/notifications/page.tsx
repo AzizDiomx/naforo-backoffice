@@ -271,7 +271,7 @@ export default function NotificationsPage() {
                 transition: 'all 0.2s',
               }}
             >
-              ðŸ’³ Paiements
+              Paiements
             </button>
 
             <button
@@ -288,7 +288,7 @@ export default function NotificationsPage() {
                 transition: 'all 0.2s',
               }}
             >
-              ðŸ”‘ Locataires
+              Locataires
             </button>
 
             <button
@@ -305,7 +305,7 @@ export default function NotificationsPage() {
                 transition: 'all 0.2s',
               }}
             >
-              ðŸ¢ Système & Agences
+              Système & Agences
             </button>
           </div>
 
