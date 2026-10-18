@@ -135,16 +135,31 @@ export default function AdminOrganizationsPage() {
   const [statsData, setStatsData] = useState<OrgStats | null>(null);
   const [statsLoading, setStatsLoading] = useState<boolean>(false);
 
-  const [createModalOpen, setCreateModalOpen] = useState<boolean>(false);
-  const [createForm, setCreateForm] = useState({
+  const [createdCredentials, setCreatedCredentials] = useState<{
+    orgName: string;
+    email: string;
+    tempPassword?: string;
+    adminName: string;
+    emailSent: boolean;
+  } | null>(null);
+
+  const initialCreateForm = {
     name: '',
     email: '',
     phone: '',
     city: 'Abidjan',
     country: 'CI',
     address: '',
-    plan: 'starter'
-  });
+    plan: 'starter',
+    adminFirstName: '',
+    adminLastName: '',
+    adminEmail: '',
+    adminPassword: '',
+    sendCredentialsEmail: true
+  };
+
+  const [createModalOpen, setCreateModalOpen] = useState<boolean>(false);
+  const [createForm, setCreateForm] = useState(initialCreateForm);
   const [createLoading, setCreateLoading] = useState<boolean>(false);
 
   const [editModalOpen, setEditModalOpen] = useState<boolean>(false);
@@ -293,18 +308,18 @@ export default function AdminOrganizationsPage() {
 
     setCreateLoading(true);
     try {
-      await api.post('/organizations', createForm);
+      const res = await api.post('/organizations', createForm);
       toast.success('Organisation créée avec succès !');
       setCreateModalOpen(false);
-      setCreateForm({
-        name: '',
-        email: '',
-        phone: '',
-        city: 'Abidjan',
-        country: 'CI',
-        address: '',
-        plan: 'starter'
-      });
+
+      if (res?.generatedCredentials) {
+        setCreatedCredentials({
+          orgName: createForm.name,
+          ...res.generatedCredentials
+        });
+      }
+
+      setCreateForm(initialCreateForm);
       fetchOrganizations(true);
     } catch (err: any) {
       toast.error(err.message || "Erreur lors de la création de l'organisation.");
@@ -1874,7 +1889,9 @@ export default function AdminOrganizationsPage() {
             <div
               style={{
                 width: '100%',
-                maxWidth: '560px',
+                maxWidth: '620px',
+                maxHeight: '90vh',
+                overflowY: 'auto',
                 backgroundColor: '#ffffff',
                 borderRadius: '20px',
                 border: '1px solid #cbd5e1',
@@ -2010,6 +2027,136 @@ export default function AdminOrganizationsPage() {
                   </div>
                 </div>
 
+                {/* SECTION: ADMINISTRATEUR & IDENTIFIANTS */}
+                <div
+                  style={{
+                    backgroundColor: '#f8fafc',
+                    border: '1.5px solid #e2e8f0',
+                    borderRadius: '14px',
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                    marginTop: '4px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <ShieldCheck size={18} style={{ color: 'var(--primary)' }} />
+                      <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#0f172a' }}>
+                        Administrateur & Accès de l'Organisation
+                      </span>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        backgroundColor: '#e0f2fe',
+                        color: '#0369a1'
+                      }}
+                    >
+                      Provisionnement automatique
+                    </span>
+                  </div>
+
+                  <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0, lineHeight: '1.4' }}>
+                    Un compte administrateur sera créé pour piloter cette organisation. Si vous ne définissez pas de mot de passe, un mot de passe temporaire sécurisé sera généré automatiquement.
+                  </p>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label className="form-label">
+                        Prénom de l'administrateur
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ex: Amadou, Marc..."
+                        value={createForm.adminFirstName}
+                        onChange={e => setCreateForm({ ...createForm, adminFirstName: e.target.value })}
+                        className="form-control"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="form-label">
+                        Nom de famille
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ex: Koné, Diallo..."
+                        value={createForm.adminLastName}
+                        onChange={e => setCreateForm({ ...createForm, adminLastName: e.target.value })}
+                        className="form-control"
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label className="form-label">
+                        Email administrateur (connexion)
+                      </label>
+                      <input
+                        type="email"
+                        placeholder={createForm.email || "admin@agence.com"}
+                        value={createForm.adminEmail}
+                        onChange={e => setCreateForm({ ...createForm, adminEmail: e.target.value })}
+                        className="form-control"
+                      />
+                      <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
+                        Si vide, l'email officiel ci-dessus sera utilisé
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="form-label">
+                        Mot de passe temporaire
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Génération automatique (recommandé)"
+                        value={createForm.adminPassword}
+                        onChange={e => setCreateForm({ ...createForm, adminPassword: e.target.value })}
+                        className="form-control"
+                      />
+                      <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
+                        Min. 6 caractères ou laisser vide
+                      </span>
+                    </div>
+                  </div>
+
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      cursor: 'pointer',
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      marginTop: '4px'
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={createForm.sendCredentialsEmail}
+                      onChange={e => setCreateForm({ ...createForm, sendCredentialsEmail: e.target.checked })}
+                      style={{ accentColor: 'var(--primary)', width: '16px', height: '16px', cursor: 'pointer' }}
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a' }}>
+                        Envoyer les identifiants par e-mail
+                      </span>
+                      <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                        Transmet automatiquement le lien de connexion et le mot de passe via le service officiel Naforo
+                      </span>
+                    </div>
+                  </label>
+                </div>
+
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
                   <button
                     type="button"
@@ -2029,6 +2176,173 @@ export default function AdminOrganizationsPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: CREATED CREDENTIALS SUCCESS POPUP */}
+        {createdCredentials && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 1000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px'
+            }}
+            onClick={() => setCreatedCredentials(null)}
+          >
+            <div
+              style={{
+                width: '100%',
+                maxWidth: '520px',
+                backgroundColor: '#ffffff',
+                borderRadius: '20px',
+                border: '1px solid #cbd5e1',
+                boxShadow: '0 25px 60px rgba(0, 0, 0, 0.25)',
+                padding: '28px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '20px'
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '12px',
+                      backgroundColor: '#dcfce7',
+                      color: '#16a34a',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <CheckCircle2 size={24} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+                      Organisation & Accès créés !
+                    </h3>
+                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>
+                      {createdCredentials.orgName}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setCreatedCredentials(null)}
+                  style={{ background: '#f1f5f9', border: 'none', color: '#64748b', cursor: 'pointer', padding: '6px', borderRadius: '8px' }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Status Banner */}
+              <div
+                style={{
+                  padding: '12px 16px',
+                  borderRadius: '12px',
+                  backgroundColor: createdCredentials.emailSent ? '#f0fdf4' : '#fffbeb',
+                  border: `1.5px solid ${createdCredentials.emailSent ? '#bbf7d0' : '#fde68a'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px'
+                }}
+              >
+                {createdCredentials.emailSent ? (
+                  <CheckCheck size={20} style={{ color: '#16a34a', flexShrink: 0 }} />
+                ) : (
+                  <AlertTriangle size={20} style={{ color: '#d97706', flexShrink: 0 }} />
+                )}
+                <div style={{ fontSize: '0.8rem', color: createdCredentials.emailSent ? '#166534' : '#92400e' }}>
+                  {createdCredentials.emailSent ? (
+                    <span>
+                      <strong>E-mail officiel envoyé !</strong> Les identifiants et le lien de connexion ont été transmis à <strong>{createdCredentials.email}</strong>.
+                    </span>
+                  ) : (
+                    <span>
+                      <strong>Attention :</strong> L'envoi automatique d'email n'a pas été déclenché ou a échoué. Veuillez transmettre manuellement les identifiants ci-dessous.
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Credentials Box */}
+              <div
+                style={{
+                  backgroundColor: '#f8fafc',
+                  border: '1.5px solid #e2e8f0',
+                  borderRadius: '14px',
+                  padding: '18px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '14px'
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>
+                    Administrateur
+                  </div>
+                  <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a' }}>
+                    {createdCredentials.adminName}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>
+                    Identifiant / E-mail de connexion
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '8px 12px' }}>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0f172a', fontFamily: 'monospace' }}>
+                      {createdCredentials.email}
+                    </span>
+                    <button
+                      onClick={() => copyToClipboard(createdCredentials.email, 'cred-email')}
+                      style={{ background: 'none', border: 'none', color: copiedId === 'cred-email' ? '#16a34a' : '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}
+                    >
+                      {copiedId === 'cred-email' ? <Check size={14} /> : <Copy size={14} />}
+                      {copiedId === 'cred-email' ? 'Copié' : 'Copier'}
+                    </button>
+                  </div>
+                </div>
+
+                {createdCredentials.tempPassword && (
+                  <div>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>
+                      Mot de passe temporaire
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '8px 12px' }}>
+                      <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#d97706', fontFamily: 'monospace', letterSpacing: '0.04em' }}>
+                        {createdCredentials.tempPassword}
+                      </span>
+                      <button
+                        onClick={() => copyToClipboard(createdCredentials.tempPassword!, 'cred-pass')}
+                        style={{ background: 'none', border: 'none', color: copiedId === 'cred-pass' ? '#16a34a' : '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}
+                      >
+                        {copiedId === 'cred-pass' ? <Check size={14} /> : <Copy size={14} />}
+                        {copiedId === 'cred-pass' ? 'Copié' : 'Copier'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button
+                  onClick={() => setCreatedCredentials(null)}
+                  className="btn btn-primary"
+                  style={{ backgroundColor: 'var(--primary)', color: '#ffffff', width: '100%' }}
+                >
+                  <Check size={16} /> J'ai bien noté les identifiants
+                </button>
+              </div>
             </div>
           </div>
         )}
