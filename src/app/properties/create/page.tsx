@@ -26,6 +26,9 @@ interface CityItem {
 export default function CreatePropertyPage() {
   const [name, setName] = useState('');
   const [type, setType] = useState('apartment');
+  const [parentId, setParentId] = useState('');
+  const [lots, setLots] = useState<any[]>([]);
+  const [lotsLoading, setLotsLoading] = useState(false);
   const [address, setAddress] = useState('');
 
   // Backend Geographic Master Data
@@ -61,6 +64,43 @@ export default function CreatePropertyPage() {
         delete next[field];
         return next;
       });
+    }
+  };
+
+  // 0. Charger les lots existants pour le rattachement
+  useEffect(() => {
+    setLotsLoading(true);
+    api.get<any[]>('/properties/lots')
+      .then(res => {
+        const list = Array.isArray(res) ? res : [];
+        setLots(list);
+        if (typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search);
+          const pid = params.get('parentId');
+          if (pid) {
+            setParentId(pid);
+            const parentLot = list.find((l: any) => l.id === pid);
+            if (parentLot) {
+              if (parentLot.address) setAddress(parentLot.address);
+              if (parentLot.city) setCity(parentLot.city);
+              if (parentLot.country) setCountry(parentLot.country);
+            }
+          }
+        }
+      })
+      .catch(() => setLots([]))
+      .finally(() => setLotsLoading(false));
+  }, []);
+
+  const handleParentLotChange = (selectedId: string) => {
+    setParentId(selectedId);
+    if (selectedId) {
+      const parentLot = lots.find((l: any) => l.id === selectedId);
+      if (parentLot) {
+        if (parentLot.address && (!address || address.trim() === '')) setAddress(parentLot.address);
+        if (parentLot.city) setCity(parentLot.city);
+        if (parentLot.country) setCountry(parentLot.country);
+      }
     }
   };
 
@@ -181,6 +221,7 @@ export default function CreatePropertyPage() {
     const payload = {
       name: name.trim(),
       type,
+      parentId: parentId || undefined,
       address: address.trim(),
       city: finalCity,
       country,
@@ -298,6 +339,7 @@ export default function CreatePropertyPage() {
                   <option value="villa">Villa</option>
                   <option value="building">Immeuble</option>
                   <option value="residence">Résidence</option>
+                  <option value="lot">Lot / Ensemble Immobilier</option>
                   <option value="shop">Boutique / Commerce</option>
                   <option value="office">Bureau</option>
                   <option value="parking">Parking</option>
@@ -308,6 +350,29 @@ export default function CreatePropertyPage() {
                     <span>{fieldErrors.type}</span>
                   </div>
                 )}
+              </div>
+
+              {/* Rattachement à un Lot Parent */}
+              <div className="form-group">
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Building2 size={14} color="var(--primary)" />
+                  LOT / IMMEUBLE PARENT (OPTIONNEL)
+                  {lotsLoading && <Loader2 size={12} style={{ animation: 'spin 1s linear infinite', marginLeft: '4px' }} />}
+                </label>
+                <select
+                  className="form-control"
+                  value={parentId}
+                  onChange={(e) => handleParentLotChange(e.target.value)}
+                  disabled={quotaReached || lotsLoading}
+                  style={{ fontWeight: parentId ? '700' : '400', color: parentId ? 'var(--primary)' : 'inherit' }}
+                >
+                  <option value="">-- Aucun (Bien individuel indépendant) --</option>
+                  {lots.map((l: any) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name} ({l.type}) · {l.city}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Sélecteur Pays - Chargé depuis l'API Backend */}
