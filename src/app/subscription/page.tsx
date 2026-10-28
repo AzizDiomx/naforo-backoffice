@@ -31,7 +31,11 @@ import {
   Lock,
   Layers,
   HelpCircle,
-  ExternalLink
+  ExternalLink,
+  Headphones,
+  Phone,
+  Mail,
+  MessageSquare
 } from 'lucide-react';
 
 export default function SubscriptionPage() {
@@ -41,6 +45,7 @@ export default function SubscriptionPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showStarterContact, setShowStarterContact] = useState(false);
 
   // Tabs: 'overview' | 'plans' | 'invoices' | 'data'
   const [activeTab, setActiveTab] = useState<'overview' | 'plans' | 'invoices' | 'data'>('overview');
@@ -331,8 +336,115 @@ export default function SubscriptionPage() {
 
         {/* 2. Critical Alert Banners (Sans bordure gauche colorée) */}
 
-        {/* ALERTE A: Compte Suspendu (Mode lecture seule) */}
-        {mySub?.isSuspended && (
+        {/* ALERTE A1: Fin de période d'essai Starter (60 jours) */}
+        {mySub?.isStarterTrialExpired && (
+          <div className="card" style={{
+            backgroundColor: '#fffbeb',
+            borderColor: '#fde68a',
+            padding: '22px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '16px'
+          }}>
+            <div style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)',
+              color: '#B45309',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              boxShadow: '0 4px 10px rgba(217, 119, 6, 0.15)'
+            }}>
+              <Sparkles size={22} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#92400e', margin: 0 }}>
+                  Période d'essai Starter terminée
+                </h3>
+                <span style={{ backgroundColor: '#FEF3C7', color: '#92400E', border: '1px solid #FCD34D', padding: '2px 8px', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 700 }}>
+                  Offre Starter · 60 jours
+                </span>
+                <span className="badge badge-warning">Mode consultation</span>
+              </div>
+              <p style={{ fontSize: '0.875rem', color: '#78350f', margin: '0 0 14px 0', lineHeight: 1.55 }}>
+                Vos 60 jours d’évaluation gratuite du forfait Starter sont arrivés à échéance. Vos biens, locataires, baux et quittances restent soigneusement sauvegardés et consultables. Pour réactiver l'émission de quittances et la création de nouveaux éléments, souscrivez à une formule d'abonnement ou contactez notre équipe.
+              </p>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <button
+                  onClick={() => setActiveTab('plans')}
+                  className="btn btn-primary"
+                  style={{ fontSize: '0.8125rem', padding: '8px 16px', gap: '6px' }}
+                >
+                  <Zap size={14} /> Découvrir les offres &amp; S'abonner
+                </button>
+                <button
+                  onClick={() => setShowStarterContact(!showStarterContact)}
+                  className="btn btn-secondary"
+                  style={{ fontSize: '0.8125rem', padding: '8px 14px', gap: '6px', borderColor: '#fde68a' }}
+                >
+                  <Headphones size={14} /> {showStarterContact ? 'Masquer le contact' : 'Contacter les Administrateurs'}
+                </button>
+                <button
+                  onClick={handleDownloadBackup}
+                  disabled={isExporting}
+                  className="btn btn-secondary"
+                  style={{ fontSize: '0.8125rem', padding: '8px 14px', gap: '6px' }}
+                >
+                  <Download size={14} /> Exporter mes données
+                </button>
+              </div>
+
+              {showStarterContact && (
+                <div style={{
+                  marginTop: '14px',
+                  padding: '14px',
+                  borderRadius: '10px',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #fde68a',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#92400e' }}>
+                    Assistance et conseils pour le choix de votre offre Naforo :
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <a
+                      href="https://wa.me/2250700000000?text=Bonjour%2C%20ma%20p%C3%A9riode%20d%27essai%20Starter%20sur%20Naforo%20est%20termin%C3%A9e%20et%20je%20souhaite%20m%27abonner"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn"
+                      style={{ backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #86efac', fontSize: '0.8rem', padding: '6px 12px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <MessageSquare size={14} /> WhatsApp direct (+225 07 00 00 00 00)
+                    </a>
+                    <a
+                      href="tel:+2250700000000"
+                      className="btn btn-secondary"
+                      style={{ fontSize: '0.8rem', padding: '6px 12px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <Phone size={14} /> Appeler le support
+                    </a>
+                    <a
+                      href="mailto:contact@naforo.company?subject=Demande%20d%27abonnement%20Naforo"
+                      className="btn btn-secondary"
+                      style={{ fontSize: '0.8rem', padding: '6px 12px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <Mail size={14} /> contact@naforo.company
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ALERTE A2: Compte Suspendu pour forfait payant */}
+        {mySub?.isSuspended && !mySub?.isStarterTrialExpired && (
           <div className="card" style={{
             backgroundColor: '#fff5f5',
             borderColor: '#fca5a5',

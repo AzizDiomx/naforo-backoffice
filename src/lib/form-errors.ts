@@ -85,7 +85,25 @@ export function handleFormError(err: unknown, fallbackMessage = "Une erreur est 
     message = err.message || fallbackMessage;
   }
 
-  // 3. Affichage d'un toast d'erreur ultra-précis
+  // 3. Traitement spécial pour l'expiration de la période d'essai Starter
+  const lowerMsg = message.toLowerCase();
+  const isStarterTrialExpired = 
+    lowerMsg.includes("période d'essai") ||
+    lowerMsg.includes("essai gratuit") ||
+    (lowerMsg.includes("starter") && (lowerMsg.includes("échéance") || lowerMsg.includes("terminée") || lowerMsg.includes("terme")));
+
+  if (isStarterTrialExpired) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('show-starter-trial-modal', { detail: { message } }));
+    }
+    return {
+      message,
+      fieldErrors,
+      status,
+    };
+  }
+
+  // 4. Affichage d'un toast d'erreur ultra-précis
   const fieldErrorList = Object.values(fieldErrors);
   if (fieldErrorList.length === 1) {
     toast.error(fieldErrorList[0], { id: 'form-error' });

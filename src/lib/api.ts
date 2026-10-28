@@ -106,6 +106,18 @@ export async function fetchApi<T = any>(endpoint: string, options: RequestInit =
     } catch {
       // Pas de corps JSON renvoyé
     }
+
+    if (typeof window !== 'undefined') {
+      const lower = message.toLowerCase();
+      if (
+        lower.includes("période d'essai") ||
+        lower.includes("essai gratuit") ||
+        (lower.includes("starter") && (lower.includes("échéance") || lower.includes("terminée") || lower.includes("terme")))
+      ) {
+        window.dispatchEvent(new CustomEvent('show-starter-trial-modal', { detail: { message } }));
+      }
+    }
+
     throw new ApiError(message, response.status, errors);
   }
 
