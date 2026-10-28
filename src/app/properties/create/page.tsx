@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { api } from '@/lib/api';
 import { handleFormError, showFormSuccess } from '@/lib/form-errors';
-import { ArrowLeft, AlertCircle, Building2, Globe, MapPin, Loader2 } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Building2, Globe, MapPin, Loader2, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 
 interface CountryItem {
@@ -27,6 +27,8 @@ export default function CreatePropertyPage() {
   const [name, setName] = useState('');
   const [type, setType] = useState('apartment');
   const [parentId, setParentId] = useState('');
+  const [managerId, setManagerId] = useState('');
+  const [managers, setManagers] = useState<any[]>([]);
   const [lots, setLots] = useState<any[]>([]);
   const [lotsLoading, setLotsLoading] = useState(false);
   const [address, setAddress] = useState('');
@@ -90,6 +92,13 @@ export default function CreatePropertyPage() {
       })
       .catch(() => setLots([]))
       .finally(() => setLotsLoading(false));
+
+    // Charger les gestionnaires d'agence
+    api.get<any[]>('/users/managers')
+      .then(res => {
+        if (Array.isArray(res)) setManagers(res);
+      })
+      .catch(() => {});
   }, []);
 
   const handleParentLotChange = (selectedId: string) => {
@@ -233,6 +242,7 @@ export default function CreatePropertyPage() {
       rentAmount: rentAmount !== '' ? Number(rentAmount) : undefined,
       chargesAmount: chargesAmount !== '' ? Number(chargesAmount) : 0,
       depositAmount: depositAmount !== '' ? Number(depositAmount) : 0,
+      managerId: managerId || undefined,
     };
 
     try {
@@ -370,6 +380,27 @@ export default function CreatePropertyPage() {
                   {lots.map((l: any) => (
                     <option key={l.id} value={l.id}>
                       {l.name} ({l.type}) · {l.city}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Attribution d'un Gestionnaire de Portefeuille */}
+              <div className="form-group">
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <ShieldCheck size={14} style={{ color: '#013E37' }} />
+                  GESTIONNAIRE DÉDIÉ (OPTIONNEL)
+                </label>
+                <select
+                  className="form-control"
+                  value={managerId}
+                  onChange={(e) => setManagerId(e.target.value)}
+                  disabled={quotaReached}
+                >
+                  <option value="">-- Aucun (Gestion générale agence) --</option>
+                  {managers.map((m: any) => (
+                    <option key={m.id} value={m.id}>
+                      {m.firstName} {m.lastName} ({m.role === 'manager' ? 'Gérant' : m.role})
                     </option>
                   ))}
                 </select>

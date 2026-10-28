@@ -19,7 +19,8 @@ import {
   LogOut,
   X,
   MessageSquare,
-  History
+  History,
+  ShieldCheck
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
@@ -102,6 +103,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { name: 'Notifications', href: '/notifications', icon: Bell, feature: 'base', group: 'PRINCIPAL' },
 
     { name: 'Biens Immobiliers', href: '/properties', icon: Building2, feature: 'base', group: 'GESTION LOCATIVE' },
+    { name: 'Gérants & Équipe', href: '/managers', icon: ShieldCheck, feature: 'base', group: 'GESTION LOCATIVE' },
     { name: 'Locataires', href: '/tenants', icon: Users2, feature: 'base', group: 'GESTION LOCATIVE' },
     { name: 'Contrats de Bail', href: '/contracts', icon: FileText, feature: 'base', group: 'GESTION LOCATIVE' },
     { name: 'Incidents & Pannes', href: '/incidents', icon: AlertTriangle, feature: 'base', group: 'GESTION LOCATIVE' },
@@ -124,7 +126,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         { name: 'Gestion des Forfaits', href: '/admin/plans', icon: Gem, group: 'SAAS' },
         { name: 'Validation Abonnements', href: '/admin/subscriptions', icon: CreditCard, group: 'SAAS' },
       ]
-    : allOwnerMenuItems.filter(item => item.feature === 'base' || isFeatureAvailable(item.feature));
+    : allOwnerMenuItems.filter(item => {
+        if (item.href === '/managers' && userRole === 'manager') return false;
+        return item.feature === 'base' || isFeatureAvailable(item.feature);
+      });
 
   // Extraire les groupes uniques
   const groups = Array.from(new Set(menuItems.map(i => i.group)));

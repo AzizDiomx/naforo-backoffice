@@ -18,6 +18,7 @@ import {
   ChevronUp,
   BarChart3,
   User,
+  UserCheck,
   Wrench,
   ExternalLink,
   Filter,
@@ -52,6 +53,8 @@ export default function PropertiesPage() {
   const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [countryFilter, setCountryFilter] = useState('');
+  const [managerFilter, setManagerFilter] = useState('');
+  const [managers, setManagers] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
@@ -64,10 +67,18 @@ export default function PropertiesPage() {
         if (Array.isArray(res)) setCountries(res);
       })
       .catch(() => {});
+
+    // Charger les gestionnaires d'agence pour le filtre de portefeuille
+    api.get('/users/managers')
+      .then(res => {
+        if (Array.isArray(res)) setManagers(res);
+      })
+      .catch(() => {});
   }, []);
 
   const loadProperties = () => {
-    api.get(`/properties?page=${page}&limit=${pageSize}`)
+    const mgrParam = managerFilter ? `&managerId=${managerFilter}` : '';
+    api.get(`/properties?page=${page}&limit=${pageSize}${mgrParam}`)
       .then(res => {
         const list = Array.isArray(res) ? res : res.data || res.items || [];
         setProperties(list);
@@ -113,8 +124,9 @@ export default function PropertiesPage() {
 
   useEffect(() => {
     setLoading(true);
+    const mgrParam = managerFilter ? `&managerId=${managerFilter}` : '';
     Promise.all([
-      api.get(`/properties?page=${page}&limit=${pageSize}`),
+      api.get(`/properties?page=${page}&limit=${pageSize}${mgrParam}`),
       api.get('/properties/lots'),
       api.get('/subscriptions/me').catch(() => null),
     ])
@@ -139,7 +151,7 @@ export default function PropertiesPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [page, pageSize]);
+  }, [page, pageSize, managerFilter]);
 
   useEffect(() => {
     if (viewMode === 'stats') {
@@ -402,6 +414,13 @@ export default function PropertiesPage() {
                             <MapPin size={13} color="var(--primary)" />
                             {lot.address}, {lot.city}
                           </div>
+
+                          {lot.manager && (
+                            <div style={{ fontSize: '0.75rem', color: '#013E37', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '5px', marginTop: '3px' }}>
+                              <UserCheck size={13} />
+                              Gérant : {lot.manager.firstName} {lot.manager.lastName}
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -928,6 +947,19 @@ export default function PropertiesPage() {
                   </option>
                 ))}
               </select>
+
+              <select
+                className="form-control"
+                value={managerFilter}
+                onChange={(e) => setManagerFilter(e.target.value)}
+              >
+                <option value="">Tous les gestionnaires</option>
+                {managers.map((m: any) => (
+                  <option key={m.id} value={m.id}>
+                    {m.firstName} {m.lastName}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Properties List - Modern SaaS Table Layout */}
@@ -962,6 +994,12 @@ export default function PropertiesPage() {
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                                 {p.type} {p.parent?.name ? `· Lot: ${p.parent.name}` : ''}
                               </div>
+                              {p.manager && (
+                                <div style={{ fontSize: '0.72rem', color: '#013E37', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                                  <UserCheck size={12} />
+                                  {p.manager.firstName} {p.manager.lastName}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </td>
