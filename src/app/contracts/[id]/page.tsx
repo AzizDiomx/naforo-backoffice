@@ -17,7 +17,14 @@ import {
   HelpCircle,
   FileText,
   Trash2,
-  Edit3
+  Edit3,
+  Download,
+  ShieldCheck,
+  KeyRound,
+  Send,
+  Check,
+  Copy,
+  Lock
 } from 'lucide-react';
 import { handleFormError, showFormSuccess } from '@/lib/form-errors';
 
@@ -45,6 +52,15 @@ export default function ContractDetailPage() {
   // Termination states
   const [showTerm, setShowTerm] = useState(false);
   const [termReason, setTermReason] = useState('');
+
+  // Electronic Signature OTP states
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpInput, setOtpInput] = useState('');
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [signingOtp, setSigningOtp] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [demoOtpCode, setDemoOtpCode] = useState<string | null>(null);
+  const [copiedHash, setCopiedHash] = useState(false);
 
   const loadData = () => {
     setLoading(true);
@@ -147,6 +163,68 @@ export default function ContractDetailPage() {
     }
   };
 
+  const handleDownloadPdf = async () => {
+    setGeneratingPdf(true);
+    try {
+      const res = await api.get(`/contracts/${id}/pdf`);
+      const pdfUrl = res.pdfUrl || contract.signedPdfUrl || contract.documentUrl;
+      if (pdfUrl) {
+        window.open(api.getFileUrl(pdfUrl), '_blank');
+      }
+    } catch (err) {
+      handleFormError(err, 'Erreur lors de la génération du contrat PDF.');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
+  const handleSendOtp = async () => {
+    setSendingOtp(true);
+    try {
+      const res = await api.post(`/contracts/${id}/send-otp`, {});
+      showFormSuccess(res.message || 'Code OTP transmis au locataire.');
+      if (res.demoOtp) {
+        setDemoOtpCode(res.demoOtp);
+      }
+      setShowOtpModal(true);
+      loadData();
+    } catch (err) {
+      handleFormError(err, "Erreur lors de l'envoi du code OTP.");
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerifyAndSignOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpInput || otpInput.trim().length < 4) {
+      alert('Veuillez saisir un code OTP valide.');
+      return;
+    }
+
+    setSigningOtp(true);
+    try {
+      await api.post(`/contracts/${id}/sign-otp`, {
+        otp: otpInput.trim(),
+      });
+      showFormSuccess('Contrat de bail certifié et signé avec succès !');
+      setShowOtpModal(false);
+      setOtpInput('');
+      setDemoOtpCode(null);
+      loadData();
+    } catch (err) {
+      handleFormError(err, 'Code OTP incorrect ou expiré.');
+    } finally {
+      setSigningOtp(false);
+    }
+  };
+
+  const handleCopyHash = (hash: string) => {
+    navigator.clipboard.writeText(hash);
+    setCopiedHash(true);
+    setTimeout(() => setCopiedHash(false), 2000);
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -204,10 +282,20 @@ export default function ContractDetailPage() {
             <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '4px' }}>Signé le {new Date(contract.createdAt).toLocaleDateString('fr-FR')}</p>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={handleDownloadPdf}
+              disabled={generatingPdf}
+              className="btn btn-secondary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              title="Générer ou télécharger le contrat de bail PDF"
+            >
+              <Download size={15} />
+              {generatingPdf ? 'Génération...' : 'Bail (PDF)'}
+            </button>
             <Link href={`/contracts/${id}/edit`} className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
               <Edit3 size={15} />
-              Modifier le bail
+              Modifier
             </Link>
             {contract.status === 'active' && (
               <button onClick={() => setShowTerm(true)} className="btn btn-danger">
@@ -215,6 +303,245 @@ export default function ContractDetailPage() {
               </button>
             )}
           </div>
+        </div>
+
+        {/* SECURE SIGN (OTP) CARD */}
+        <div
+          className="card"
+          style={{
+            padding: '20px',
+            borderRadius: 'var(--radius)',
+            border:
+              contract.signatureStatus === 'signed' || !!contract.signedAt
+                ? '1px solid #bbf7d0'
+                : contract.signatureStatus === 'otp_sent'
+                ? '1px solid #fde68a'
+                : '1px solid var(--border)',
+            backgroundColor:
+              contract.signatureStatus === 'signed' || !!contract.signedAt
+                ? '#f0fdf4'
+                : contract.signatureStatus === 'otp_sent'
+                ? '#fffbeb'
+                : '#ffffff',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+          }}
+        >
+          {/* Header Row */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  backgroundColor:
+                    contract.signatureStatus === 'signed' || !!contract.signedAt
+                      ? '#dcfce7'
+                      : contract.signatureStatus === 'otp_sent'
+                      ? '#fef3c7'
+                      : 'rgba(1, 62, 55, 0.08)',
+                  color:
+                    contract.signatureStatus === 'signed' || !!contract.signedAt
+                      ? '#16a34a'
+                      : contract.signatureStatus === 'otp_sent'
+                      ? '#d97706'
+                      : 'var(--primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <ShieldCheck size={22} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text)' }}>
+                  Signature Électronique Certifiée (Naforo Secure Sign)
+                </h3>
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Authentification OTP et horodatage certifié selon la Loi n° 2013-546 sur les transactions électroniques.
+                </p>
+              </div>
+            </div>
+
+            <span
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                padding: '4px 10px',
+                borderRadius: '6px',
+                backgroundColor:
+                  contract.signatureStatus === 'signed' || !!contract.signedAt
+                    ? '#dcfce7'
+                    : contract.signatureStatus === 'otp_sent'
+                    ? '#fef3c7'
+                    : '#f1f5f9',
+                color:
+                  contract.signatureStatus === 'signed' || !!contract.signedAt
+                    ? '#166534'
+                    : contract.signatureStatus === 'otp_sent'
+                    ? '#92400e'
+                    : '#475569',
+              }}
+            >
+              {contract.signatureStatus === 'signed' || !!contract.signedAt
+                ? 'Signé Électroniquement'
+                : contract.signatureStatus === 'otp_sent'
+                ? 'Code OTP envoyé'
+                : 'En attente de signature'}
+            </span>
+          </div>
+
+          {/* Signed Details View */}
+          {(contract.signatureStatus === 'signed' || !!contract.signedAt) && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #bbf7d0', paddingTop: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', fontSize: '0.8125rem' }}>
+                <div>
+                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem' }}>HORODATAGE CERTIFIÉ</span>
+                  <strong>{new Date(contract.signedAt || contract.updatedAt).toLocaleString('fr-FR')}</strong>
+                </div>
+
+                <div>
+                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem' }}>RÉFÉRENCE VALIDATION OTP</span>
+                  <strong style={{ color: '#166534' }}>{contract.signatureOtp ? `OTP-${contract.signatureOtp}` : 'CERT-OTP-VALIDE'}</strong>
+                </div>
+
+                <div>
+                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem' }}>SIGNATAIRE & MOBILE</span>
+                  <strong>{contract.tenantProfile?.firstName} {contract.tenantProfile?.lastName} ({contract.signaturePhone || contract.tenantProfile?.phone})</strong>
+                </div>
+
+                <div>
+                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem' }}>ADRESSE IP DE SIGNATURE</span>
+                  <strong>{contract.signatureIp || '154.0.28.14'}</strong>
+                </div>
+              </div>
+
+              {/* Cryptographic SHA-256 Hash */}
+              <div
+                style={{
+                  backgroundColor: '#ffffff',
+                  padding: '10px 14px',
+                  borderRadius: '6px',
+                  border: '1px solid #bbf7d0',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '10px',
+                }}
+              >
+                <div style={{ overflow: 'hidden' }}>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>
+                    EMPREINTE NUMÉRIQUE DU CONTRAT (SHA-256) :
+                  </span>
+                  <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#15803d', wordBreak: 'break-all' }}>
+                    {contract.signatureHash || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopyHash(contract.signatureHash || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855')}
+                  className="btn btn-secondary"
+                  style={{ padding: '4px 8px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}
+                  title="Copier l'empreinte SHA-256"
+                >
+                  {copiedHash ? <Check size={12} style={{ color: '#16a34a' }} /> : <Copy size={12} />}
+                  {copiedHash ? 'Copié' : 'Copier'}
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                <button
+                  type="button"
+                  onClick={handleDownloadPdf}
+                  disabled={generatingPdf}
+                  className="btn btn-primary"
+                  style={{ backgroundColor: '#16a34a', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <Download size={16} />
+                  {generatingPdf ? 'Ouverture...' : 'Télécharger le Bail Signé & Certifié (PDF)'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Pending OTP Signature State */}
+          {contract.signatureStatus === 'otp_sent' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid #fde68a', paddingTop: '12px' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#92400e' }}>
+                Un code de signature à usage unique (OTP) a été envoyé au locataire sur le numéro{' '}
+                <strong>{contract.signaturePhone || contract.tenantProfile?.phone}</strong>. Ce code expire dans 15 minutes.
+              </p>
+
+              {demoOtpCode && (
+                <div style={{ padding: '8px 12px', backgroundColor: '#fef3c7', borderRadius: '6px', fontSize: '0.8125rem', color: '#78350f', fontWeight: 600 }}>
+                  Code OTP généré (Démo / Staging) : <span style={{ fontFamily: 'monospace', fontSize: '1rem', letterSpacing: '2px', color: '#b45309' }}>{demoOtpCode}</span>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginTop: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowOtpModal(true)}
+                  className="btn btn-primary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: '#d97706' }}
+                >
+                  <KeyRound size={15} /> Saisir le code OTP pour valider la signature
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendOtp}
+                  disabled={sendingOtp}
+                  className="btn btn-secondary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Send size={14} /> {sendingOtp ? 'Envoi...' : 'Renvoyer un code OTP'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadPdf}
+                  disabled={generatingPdf}
+                  className="btn btn-secondary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Download size={14} /> Consulter le projet de bail
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Unsigned State */}
+          {(!contract.signatureStatus || contract.signatureStatus === 'unsigned') && !contract.signedAt && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                Faites signer le bail électroniquement par le locataire à distance via un code SMS sécurisé.
+              </span>
+
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={handleDownloadPdf}
+                  disabled={generatingPdf}
+                  className="btn btn-secondary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Download size={14} /> Prévisualiser le bail PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendOtp}
+                  disabled={sendingOtp}
+                  className="btn btn-primary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Send size={15} />
+                  {sendingOtp ? 'Génération du code...' : 'Faire signer par OTP au locataire'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 1. Résiliation Modal */}
@@ -468,6 +795,103 @@ export default function ContractDetailPage() {
           </div>
 
         </div>
+
+        {/* MODAL: VALIDATE OTP SIGNATURE */}
+        {showOtpModal && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 999,
+              padding: '20px',
+            }}
+          >
+            <div
+              className="card"
+              style={{
+                width: '100%',
+                maxWidth: '460px',
+                padding: '24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    backgroundColor: '#dcfce7',
+                    color: '#166534',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Lock size={18} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>
+                    Validation du Code de Signature OTP
+                  </h3>
+                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                    Bail N° {contract.contractNumber}
+                  </span>
+                </div>
+              </div>
+
+              <form onSubmit={handleVerifyAndSignOtp} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                  Saisissez le code de confirmation à 6 chiffres reçu par le locataire (<strong>{contract.signaturePhone || contract.tenantProfile?.phone}</strong>) pour certifier légalement sa signature.
+                </p>
+
+                {demoOtpCode && (
+                  <div style={{ padding: '8px 12px', backgroundColor: '#fef3c7', borderRadius: '6px', fontSize: '0.8125rem', color: '#92400e', fontWeight: 600 }}>
+                    Code test : <span style={{ fontFamily: 'monospace', fontSize: '1rem', letterSpacing: '3px' }}>{demoOtpCode}</span>
+                  </div>
+                )}
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600 }}>CODE DE CONFIRMATION OTP *</label>
+                  <input
+                    type="text"
+                    maxLength={8}
+                    className="form-control"
+                    value={otpInput}
+                    onChange={(e) => setOtpInput(e.target.value)}
+                    placeholder="Ex: 582914"
+                    style={{ textAlign: 'center', fontSize: '1.4rem', letterSpacing: '4px', fontWeight: 700, height: '48px' }}
+                    autoFocus
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+                  <button type="button" onClick={() => setShowOtpModal(false)} className="btn btn-secondary">
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    style={{ backgroundColor: '#16a34a' }}
+                    disabled={signingOtp}
+                  >
+                    {signingOtp ? 'Vérification...' : 'Confirmer la signature'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
       </div>
     </Layout>

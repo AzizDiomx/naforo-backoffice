@@ -21,7 +21,8 @@ import {
   MessageSquare,
   History,
   ShieldCheck,
-  Landmark
+  Landmark,
+  Palette
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
@@ -116,6 +117,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
     { name: 'Messagerie Locataires', href: '/chat', icon: MessageSquare, feature: 'chat_encrypted', group: 'SERVICES PRO' },
     { name: 'Coffre-fort (GED)', href: '/documents', icon: FolderKanban, feature: 'ged_vault', group: 'SERVICES PRO' },
+    { name: 'Marque Blanche Agence', href: '/agency/branding', icon: Palette, feature: 'base', group: 'SERVICES PRO' },
     { name: 'Mon Abonnement', href: '/subscription', icon: Gem, feature: 'base', group: 'SERVICES PRO' },
   ];
 
