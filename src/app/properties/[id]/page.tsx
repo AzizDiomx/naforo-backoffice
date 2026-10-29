@@ -32,7 +32,8 @@ import {
   ShieldCheck,
   Clock,
   Download,
-  DoorOpen
+  DoorOpen,
+  Landmark
 } from 'lucide-react';
 
 import ConfirmModal from '@/components/ConfirmModal';
@@ -251,6 +252,29 @@ export default function PropertyDetailPage() {
                   <Building2 size={13} />
                   Lot : {property.parent.name}
                   <ExternalLink size={11} />
+                </Link>
+              )}
+
+              {property.landlord && (
+                <Link 
+                  href="/landlords"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    borderRadius: '8px',
+                    backgroundColor: '#f0fdf4',
+                    color: '#15803d',
+                    fontSize: '0.78rem',
+                    fontWeight: '700',
+                    textDecoration: 'none',
+                    border: '1px solid #bbf7d0'
+                  }}
+                  title="Propriétaire mandant du bien"
+                >
+                  <Landmark size={13} />
+                  Bailleur : {property.landlord.type === 'company' ? property.landlord.companyName : `${property.landlord.firstName} ${property.landlord.lastName}`}
                 </Link>
               )}
 

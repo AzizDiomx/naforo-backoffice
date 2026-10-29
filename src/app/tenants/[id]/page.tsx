@@ -20,7 +20,10 @@ import {
   AlertTriangle,
   Download,
   Building,
-  DollarSign
+  DollarSign,
+  TrendingUp,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 
 import ConfirmModal from '@/components/ConfirmModal';
@@ -31,8 +34,25 @@ export default function TenantDetailPage() {
   const [tenant, setTenant] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [scoringLoading, setScoringLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleRecalculateRisk = async () => {
+    setScoringLoading(true);
+    try {
+      const res = await api.post(`/tenant-profiles/${id}/recalculate-risk`);
+      showFormSuccess('Score prédictif et facteurs de risque actualisés.');
+      setTenant((prev: any) => ({
+        ...prev,
+        ...res,
+      }));
+    } catch (err) {
+      handleFormError(err, 'Erreur lors de l’actualisation du score de risque.');
+    } finally {
+      setScoringLoading(false);
+    }
+  };
 
   const loadTenant = () => {
     setLoading(true);
@@ -273,6 +293,145 @@ export default function TenantDetailPage() {
 
           {/* Sidebar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+            {/* Predictive Risk Scoring Card (Expert Tier) */}
+            <div
+              className="card"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px',
+                border: '1px solid var(--border)',
+                background: 'linear-gradient(135deg, rgba(1, 62, 55, 0.02) 0%, rgba(255, 239, 179, 0.06) 100%)',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <TrendingUp size={16} style={{ color: 'var(--primary)' }} />
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text)' }}>
+                    Scoring Prédictif d&apos;Impayé
+                  </span>
+                </div>
+
+                <span
+                  style={{
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    backgroundColor:
+                      tenant.riskLevel === 'critical'
+                        ? '#fee2e2'
+                        : tenant.riskLevel === 'high'
+                        ? '#ffedd5'
+                        : tenant.riskLevel === 'medium'
+                        ? '#fef9c3'
+                        : '#dcfce7',
+                    color:
+                      tenant.riskLevel === 'critical'
+                        ? '#b91c1c'
+                        : tenant.riskLevel === 'high'
+                        ? '#c2410c'
+                        : tenant.riskLevel === 'medium'
+                        ? '#854d0e'
+                        : '#166534',
+                  }}
+                >
+                  {tenant.riskLevel === 'critical'
+                    ? 'Risque Critique'
+                    : tenant.riskLevel === 'high'
+                    ? 'Risque Élevé'
+                    : tenant.riskLevel === 'medium'
+                    ? 'Risque Modéré'
+                    : 'Risque Faible'}
+                </span>
+              </div>
+
+              {/* Default Probability Gauge */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600, marginBottom: '6px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Probabilité de défaut calculée</span>
+                  <span
+                    style={{
+                      fontWeight: 800,
+                      color:
+                        (tenant.predictedDefaultProbability || 5) >= 50
+                          ? '#b91c1c'
+                          : (tenant.predictedDefaultProbability || 5) >= 25
+                          ? '#c2410c'
+                          : '#166534',
+                    }}
+                  >
+                    {tenant.predictedDefaultProbability ?? 5}%
+                  </span>
+                </div>
+                <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--background)', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                  <div
+                    style={{
+                      width: `${Math.min(100, tenant.predictedDefaultProbability ?? 5)}%`,
+                      height: '100%',
+                      backgroundColor:
+                        (tenant.predictedDefaultProbability || 5) >= 50
+                          ? '#dc2626'
+                          : (tenant.predictedDefaultProbability || 5) >= 25
+                          ? '#f59e0b'
+                          : '#16a34a',
+                      transition: 'width 0.3s ease',
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Risk Factors List */}
+              {Array.isArray(tenant.riskFactors) && tenant.riskFactors.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                    Facteurs déterminants :
+                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {tenant.riskFactors.map((factor: string, idx: number) => (
+                      <div
+                        key={idx}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          fontSize: '0.75rem',
+                          color: 'var(--text)',
+                          backgroundColor: '#ffffff',
+                          padding: '6px 8px',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border)',
+                        }}
+                      >
+                        <AlertCircle size={12} style={{ color: '#d97706', flexShrink: 0 }} />
+                        <span>{factor}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Recalculate Button */}
+              <button
+                type="button"
+                onClick={handleRecalculateRisk}
+                disabled={scoringLoading}
+                className="btn btn-secondary"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  fontSize: '0.75rem',
+                  padding: '6px 10px',
+                  marginTop: '4px',
+                }}
+              >
+                <RefreshCw size={12} className={scoringLoading ? 'animate-spin' : ''} />
+                {scoringLoading ? 'Actualisation...' : 'Actualiser le score prédictif'}
+              </button>
+            </div>
             
             {/* Reliability Rating Box */}
             <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>

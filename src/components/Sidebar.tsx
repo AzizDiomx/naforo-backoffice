@@ -20,7 +20,8 @@ import {
   X,
   MessageSquare,
   History,
-  ShieldCheck
+  ShieldCheck,
+  Landmark
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
@@ -104,6 +105,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
     { name: 'Biens Immobiliers', href: '/properties', icon: Building2, feature: 'base', group: 'GESTION LOCATIVE' },
     { name: 'Gérants & Équipe', href: '/managers', icon: ShieldCheck, feature: 'base', group: 'GESTION LOCATIVE' },
+    { name: 'Bailleurs & CRG', href: '/landlords', icon: Landmark, feature: 'base', group: 'GESTION LOCATIVE' },
     { name: 'Locataires', href: '/tenants', icon: Users2, feature: 'base', group: 'GESTION LOCATIVE' },
     { name: 'Contrats de Bail', href: '/contracts', icon: FileText, feature: 'base', group: 'GESTION LOCATIVE' },
     { name: 'Incidents & Pannes', href: '/incidents', icon: AlertTriangle, feature: 'base', group: 'GESTION LOCATIVE' },

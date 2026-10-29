@@ -28,7 +28,11 @@ import {
   Calendar,
   FileText,
   RotateCcw,
-  ExternalLink
+  ExternalLink,
+  DollarSign,
+  Receipt,
+  XCircle,
+  FileCheck
 } from 'lucide-react';
 import { handleFormError, showFormSuccess } from '@/lib/form-errors';
 
@@ -50,6 +54,17 @@ export default function IncidentDetailPage() {
 
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+
+  // Expense Workflow states
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [quoteCostInput, setQuoteCostInput] = useState<number | string>('');
+  const [quoteIsDeductible, setQuoteIsDeductible] = useState(true);
+
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectionReasonInput, setRejectionReasonInput] = useState('');
+
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [actualCostInput, setActualCostInput] = useState<number | string>('');
 
   // Inline errors
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -192,6 +207,91 @@ export default function IncidentDetailPage() {
       loadData();
     } catch (err) {
       handleFormError(err, "Erreur lors du téléversement des photos.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 6. Submit Quote
+  const handleSubmitQuote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cost = Number(quoteCostInput);
+    if (!cost || cost <= 0) {
+      alert('Veuillez entrer un montant estimé valide.');
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      await api.post(`/incidents/${id}/quote`, {
+        estimatedCost: cost,
+        isDeductibleFromCRG: quoteIsDeductible,
+      });
+      showFormSuccess('Devis soumis pour approbation par la direction.');
+      setShowQuoteModal(false);
+      loadData();
+    } catch (err) {
+      handleFormError(err, 'Erreur lors de la soumission du devis.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 7. Approve Expense
+  const handleApproveExpense = async () => {
+    if (!confirm('Confirmez-vous la validation et l’autorisation de cette dépense travaux ?')) return;
+
+    setActionLoading(true);
+    try {
+      await api.post(`/incidents/${id}/approve-expense`, { approved: true });
+      showFormSuccess('Dépense approuvée avec succès.');
+      loadData();
+    } catch (err) {
+      handleFormError(err, "Erreur lors de l'approbation de la dépense.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 8. Reject Expense
+  const handleRejectExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rejectionReasonInput.trim()) {
+      alert('Veuillez préciser le motif du rejet.');
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      await api.post(`/incidents/${id}/approve-expense`, {
+        approved: false,
+        rejectionReason: rejectionReasonInput.trim(),
+      });
+      showFormSuccess('Dépense refusée.');
+      setShowRejectModal(false);
+      loadData();
+    } catch (err) {
+      handleFormError(err, 'Erreur lors du rejet de la dépense.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 9. Pay Expense
+  const handlePayExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const actual = actualCostInput ? Number(actualCostInput) : Number(incident.estimatedCost);
+
+    setActionLoading(true);
+    try {
+      await api.post(`/incidents/${id}/pay-expense`, {
+        actualCost: actual,
+      });
+      showFormSuccess('Dépense marquée comme réglée et imputée.');
+      setShowPayModal(false);
+      loadData();
+    } catch (err) {
+      handleFormError(err, 'Erreur lors du règlement de la dépense.');
     } finally {
       setActionLoading(false);
     }
@@ -783,6 +883,155 @@ export default function IncidentDetailPage() {
           {/* Right Column: Context Information */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
+            {/* Expense Workflow & CRG Card */}
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+                <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <DollarSign size={16} style={{ color: 'var(--primary)' }} />
+                  Dépenses & Validation Travaux
+                </h3>
+                <span
+                  style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    backgroundColor:
+                      incident.expenseStatus === 'paid'
+                        ? '#dcfce7'
+                        : incident.expenseStatus === 'approved'
+                        ? '#e0f2fe'
+                        : incident.expenseStatus === 'rejected'
+                        ? '#fee2e2'
+                        : incident.expenseStatus === 'pending_approval'
+                        ? '#fef3c7'
+                        : '#f1f5f9',
+                    color:
+                      incident.expenseStatus === 'paid'
+                        ? '#166534'
+                        : incident.expenseStatus === 'approved'
+                        ? '#0369a1'
+                        : incident.expenseStatus === 'rejected'
+                        ? '#991b1b'
+                        : incident.expenseStatus === 'pending_approval'
+                        ? '#92400e'
+                        : '#475569',
+                  }}
+                >
+                  {incident.expenseStatus === 'paid'
+                    ? 'Payé'
+                    : incident.expenseStatus === 'approved'
+                    ? 'Approuvé'
+                    : incident.expenseStatus === 'rejected'
+                    ? 'Rejeté'
+                    : incident.expenseStatus === 'pending_approval'
+                    ? 'En attente validation'
+                    : 'Sans devis'}
+                </span>
+              </div>
+
+              {/* Cost details */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Montant devis estimé :</span>
+                  <strong style={{ color: 'var(--text)', fontSize: '0.95rem' }}>
+                    {incident.estimatedCost
+                      ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(incident.estimatedCost).replace('XOF', 'FCFA')
+                      : 'Non chiffré'}
+                  </strong>
+                </div>
+
+                {incident.actualCost && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Coût réel facturé :</span>
+                    <strong style={{ color: '#16a34a', fontSize: '0.95rem' }}>
+                      {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(incident.actualCost).replace('XOF', 'FCFA')}
+                    </strong>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', marginTop: '4px' }}>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: incident.isDeductibleFromCRG !== false ? '#16a34a' : '#94a3b8',
+                    }}
+                  />
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    {incident.isDeductibleFromCRG !== false
+                      ? 'Déductible du Compte-Rendu de Gestion (CRG) du bailleur'
+                      : 'Charge agence (non déductible du bailleur)'}
+                  </span>
+                </div>
+
+                {incident.expenseRejectionReason && (
+                  <div style={{ marginTop: '8px', padding: '10px', backgroundColor: '#fef2f2', borderRadius: '6px', color: '#991b1b', fontSize: '0.75rem' }}>
+                    <strong>Motif du refus :</strong> {incident.expenseRejectionReason}
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons for Expense Circuit */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+                {(!incident.expenseStatus || incident.expenseStatus === 'pending_quote' || incident.expenseStatus === 'rejected') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuoteCostInput(incident.estimatedCost || '');
+                      setQuoteIsDeductible(incident.isDeductibleFromCRG !== false);
+                      setShowQuoteModal(true);
+                    }}
+                    className="btn btn-secondary"
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.8125rem' }}
+                  >
+                    <DollarSign size={14} />
+                    {incident.estimatedCost ? 'Modifier le devis travaux' : 'Soumettre un devis'}
+                  </button>
+                )}
+
+                {incident.expenseStatus === 'pending_approval' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={handleApproveExpense}
+                      disabled={actionLoading}
+                      className="btn btn-primary"
+                      style={{ backgroundColor: '#16a34a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.8125rem' }}
+                    >
+                      <Check size={14} /> Valider
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowRejectModal(true)}
+                      disabled={actionLoading}
+                      className="btn btn-danger"
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.8125rem' }}
+                    >
+                      <XCircle size={14} /> Rejeter
+                    </button>
+                  </div>
+                )}
+
+                {incident.expenseStatus === 'approved' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActualCostInput(incident.estimatedCost || '');
+                      setShowPayModal(true);
+                    }}
+                    disabled={actionLoading}
+                    className="btn btn-primary"
+                    style={{ backgroundColor: '#0f766e', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.8125rem' }}
+                  >
+                    <Receipt size={14} /> Enregistrer la facture & Régler
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Property Card */}
             <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, borderBottom: '1px solid var(--border)', paddingBottom: '8px', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -936,6 +1185,215 @@ export default function IncidentDetailPage() {
           </div>
 
         </div>
+
+        {/* MODAL: SUBMIT / EDIT QUOTE */}
+        {showQuoteModal && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 999,
+              padding: '20px',
+            }}
+          >
+            <div
+              className="card"
+              style={{
+                width: '100%',
+                maxWidth: '480px',
+                padding: '24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>
+                  Chiffrage & Devis des travaux
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowQuoteModal(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+                >
+                  <RotateCcw size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmitQuote} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600 }}>
+                    Montant estimé des réparations (FCFA) *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="form-control"
+                    value={quoteCostInput}
+                    onChange={(e) => setQuoteCostInput(e.target.value)}
+                    placeholder="Ex: 25000"
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px', backgroundColor: 'var(--background)', borderRadius: '6px' }}>
+                  <input
+                    type="checkbox"
+                    id="deductibleCheck"
+                    checked={quoteIsDeductible}
+                    onChange={(e) => setQuoteIsDeductible(e.target.checked)}
+                    style={{ marginTop: '3px', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="deductibleCheck" style={{ fontSize: '0.8125rem', cursor: 'pointer', color: 'var(--text)' }}>
+                    <strong>Déductible du Compte-Rendu de Gestion (CRG)</strong>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      Cette dépense sera automatiquement imputée et déduite du reversement net du bailleur propriétaire lors du prochain calcul de CRG.
+                    </div>
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+                  <button type="button" onClick={() => setShowQuoteModal(false)} className="btn btn-secondary">
+                    Annuler
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={actionLoading}>
+                    {actionLoading ? 'Soumission...' : 'Soumettre le devis'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: REJECT EXPENSE */}
+        {showRejectModal && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 999,
+              padding: '20px',
+            }}
+          >
+            <div
+              className="card"
+              style={{
+                width: '100%',
+                maxWidth: '460px',
+                padding: '24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px',
+              }}
+            >
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#b91c1c' }}>
+                Refuser le devis des travaux
+              </h3>
+
+              <form onSubmit={handleRejectExpense} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600 }}>
+                    Motif du rejet *
+                  </label>
+                  <textarea
+                    rows={3}
+                    className="form-control"
+                    value={rejectionReasonInput}
+                    onChange={(e) => setRejectionReasonInput(e.target.value)}
+                    placeholder="Ex: Montant trop élevé, devis concurrent demandé, ou intervention à la charge du locataire."
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <button type="button" onClick={() => setShowRejectModal(false)} className="btn btn-secondary">
+                    Annuler
+                  </button>
+                  <button type="submit" className="btn btn-danger" disabled={actionLoading}>
+                    {actionLoading ? 'Validation...' : 'Confirmer le refus'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: PAY / INVOICE EXPENSE */}
+        {showPayModal && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 999,
+              padding: '20px',
+            }}
+          >
+            <div
+              className="card"
+              style={{
+                width: '100%',
+                maxWidth: '480px',
+                padding: '24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px',
+              }}
+            >
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>
+                Enregistrer le règlement de l&apos;intervention
+              </h3>
+
+              <form onSubmit={handlePayExpense} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600 }}>
+                    Coût réel final facturé (FCFA) *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="form-control"
+                    value={actualCostInput}
+                    onChange={(e) => setActualCostInput(e.target.value)}
+                    required
+                  />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Par défaut : montant du devis approuvé ({incident.estimatedCost} FCFA)
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+                  <button type="button" onClick={() => setShowPayModal(false)} className="btn btn-secondary">
+                    Annuler
+                  </button>
+                  <button type="submit" className="btn btn-primary" style={{ backgroundColor: '#16a34a' }} disabled={actionLoading}>
+                    {actionLoading ? 'Enregistrement...' : 'Valider le paiement'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
       </div>
     </Layout>
