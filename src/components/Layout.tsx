@@ -112,7 +112,7 @@ export default function Layout({ children }: LayoutProps) {
                 <Sparkles size={16} />
               </div>
               <div style={{ fontSize: '0.85rem', color: '#92400E' }}>
-                <strong>Période d'essai Starter terminée :</strong> Vos 60 jours d'essai gratuit sont arrivés à échéance. Vos données sont préservées en mode consultation.
+                <strong>Période d'essai Starter terminée :</strong> Vos 3 mois d'essai gratuit sont arrivés à échéance. Vos données sont préservées en mode consultation.
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

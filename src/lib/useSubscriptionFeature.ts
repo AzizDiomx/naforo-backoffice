@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { api } from './api';
 
 export interface PlanQuotas {
+  lots: { used: number; max: number; reached: boolean };
   properties: { used: number; max: number; reached: boolean };
   tenants: { used: number; max: number; reached: boolean };
 }
@@ -52,16 +53,35 @@ export function useSubscriptionFeature() {
       features = [];
     }
 
-    // Default fallback features by plan code if features array is empty
-    if (features.length === 0) {
-      if (pCode.includes('pro')) {
-        features = ['email_reminders', 'sms_whatsapp', 'mobile_money_autovalidate', 'qr_code_verification', 'excel_export', 'ged_vault', 'chat_encrypted', 'incident_management'];
-      } else if (pCode.includes('starter')) {
-        features = ['email_reminders', 'standard_pdf', 'basic_support'];
-      }
-    }
+    // Default fallback features by plan code
+    const defaultProFeatures = [
+      'dashboard',
+      'standard_pdf',
+      'email_reminders',
+      'sms_whatsapp',
+      'mobile_money_autovalidate',
+      'qr_code_verification',
+      'excel_export',
+      'ged_vault',
+      'chat_encrypted',
+      'incident_management',
+      'expense_workflow',
+      'risk_scoring',
+      'advanced_stats',
+    ];
+    const defaultStarterFeatures = [
+      'dashboard',
+      'standard_pdf',
+      'email_reminders',
+      'incident_management',
+      'basic_support',
+    ];
 
-    return features.includes(featureCode);
+    if (features.includes(featureCode)) return true;
+    if (pCode.includes('pro') && defaultProFeatures.includes(featureCode)) return true;
+    if (pCode.includes('starter') && defaultStarterFeatures.includes(featureCode)) return true;
+
+    return false;
   };
 
   return {

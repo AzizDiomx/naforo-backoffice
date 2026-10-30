@@ -25,14 +25,19 @@ import {
 
 export default function DashboardPage() {
   const [data, setData] = useState<any>(null);
+  const [subQuotas, setSubQuotas] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Charger les statistiques consolidées du Dashboard Propriétaire
-    api.get('/dashboard/owner')
-      .then(res => {
+    // Charger les statistiques consolidées du Dashboard Propriétaire + Quotas réels
+    Promise.all([
+      api.get('/dashboard/owner'),
+      api.get('/subscriptions/me').catch(() => null),
+    ])
+      .then(([res, subRes]) => {
         setData(res);
+        if (subRes?.quotas) setSubQuotas(subRes.quotas);
         setLoading(false);
       })
       .catch(err => {
@@ -225,15 +230,35 @@ export default function DashboardPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Quota Biens */}
+              {/* Quota Lots */}
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', fontWeight: '500', marginBottom: '6px' }}>
-                  <span style={{ color: 'var(--text)' }}>Biens Immobiliers créés</span>
-                  <span style={{ color: 'var(--text-muted)' }}>{occupancy.total} / {sub.info?.planName === 'Starter' ? '2' : '25'}</span>
+                  <span style={{ color: 'var(--text)' }}>Lots (Immeubles / Résidences)</span>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    {subQuotas?.lots?.used ?? (occupancy.lotsCount || 0)} / {(subQuotas?.lots?.max ?? (sub.info?.planCode === 'starter' ? 1 : 5)) >= 9999 ? 'Illimité' : (subQuotas?.lots?.max ?? (sub.info?.planCode === 'starter' ? 1 : 5))}
+                  </span>
                 </div>
                 <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--border)', borderRadius: '4px', overflow: 'hidden' }}>
                   <div style={{
-                    width: `${Math.min((occupancy.total / (sub.info?.planName === 'Starter' ? 2 : 25)) * 100, 100)}%`,
+                    width: `${Math.min(((subQuotas?.lots?.used ?? (occupancy.lotsCount || 0)) / (subQuotas?.lots?.max ?? (sub.info?.planCode === 'starter' ? 1 : 5))) * 100, 100)}%`,
+                    height: '100%',
+                    backgroundColor: '#d97706',
+                    borderRadius: '4px'
+                  }}></div>
+                </div>
+              </div>
+
+              {/* Quota Biens */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', fontWeight: '500', marginBottom: '6px' }}>
+                  <span style={{ color: 'var(--text)' }}>Biens Immobiliers (Unités)</span>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    {subQuotas?.properties?.used ?? occupancy.total} / {(subQuotas?.properties?.max ?? (sub.info?.planCode === 'starter' ? 2 : 15)) >= 9999 ? 'Illimité' : (subQuotas?.properties?.max ?? (sub.info?.planCode === 'starter' ? 2 : 15))}
+                  </span>
+                </div>
+                <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--border)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${Math.min(((subQuotas?.properties?.used ?? occupancy.total) / (subQuotas?.properties?.max ?? (sub.info?.planCode === 'starter' ? 2 : 15))) * 100, 100)}%`,
                     height: '100%',
                     backgroundColor: 'var(--primary)',
                     borderRadius: '4px'
@@ -245,11 +270,13 @@ export default function DashboardPage() {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', fontWeight: '500', marginBottom: '6px' }}>
                   <span style={{ color: 'var(--text)' }}>Locataires Actifs</span>
-                  <span style={{ color: 'var(--text-muted)' }}>{occupancy.occupied} / {sub.info?.planName === 'Starter' ? '2' : '25'}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    {subQuotas?.tenants?.used ?? occupancy.occupied} / {(subQuotas?.tenants?.max ?? (sub.info?.planCode === 'starter' ? 2 : 15)) >= 9999 ? 'Illimité' : (subQuotas?.tenants?.max ?? (sub.info?.planCode === 'starter' ? 2 : 15))}
+                  </span>
                 </div>
                 <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--border)', borderRadius: '4px', overflow: 'hidden' }}>
                   <div style={{
-                    width: `${Math.min((occupancy.occupied / (sub.info?.planName === 'Starter' ? 2 : 25)) * 100, 100)}%`,
+                    width: `${Math.min(((subQuotas?.tenants?.used ?? occupancy.occupied) / (subQuotas?.tenants?.max ?? (sub.info?.planCode === 'starter' ? 2 : 15))) * 100, 100)}%`,
                     height: '100%',
                     backgroundColor: 'var(--success)',
                     borderRadius: '4px'

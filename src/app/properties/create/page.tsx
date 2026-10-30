@@ -55,9 +55,14 @@ export default function CreatePropertyPage() {
 
   const [loading, setLoading] = useState(false);
   const [quotaLoading, setQuotaLoading] = useState(true);
-  const [quotaReached, setQuotaReached] = useState(false);
+  const [quotas, setQuotas] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const isLotSelected = ['building', 'residence', 'lot'].includes(type);
+  const lotQuotaReached = Boolean(quotas?.lots?.reached);
+  const propQuotaReached = Boolean(quotas?.properties?.reached);
+  const quotaReached = isLotSelected ? lotQuotaReached : propQuotaReached;
 
   const clearFieldError = (field: string) => {
     if (fieldErrors[field]) {
@@ -169,9 +174,8 @@ export default function CreatePropertyPage() {
     // Vérifier les quotas avant de charger le formulaire
     api.get('/subscriptions/me')
       .then(res => {
-        if (res.quotas?.properties?.reached) {
-          setQuotaReached(true);
-          setError("Vous avez atteint la limite de biens autorisée par votre forfait. Veuillez surclasser votre abonnement.");
+        if (res?.quotas) {
+          setQuotas(res.quotas);
         }
         setQuotaLoading(false);
       })
@@ -282,11 +286,74 @@ export default function CreatePropertyPage() {
           Retour à la liste
         </Link>
 
-        {/* Title */}
-        <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', marginBottom: '4px' }}>Ajouter un Bien</h1>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Renseignez les caractéristiques physiques et financières du logement</p>
+        {/* Title & Quotas Summary */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: '700', marginBottom: '4px' }}>
+              {isLotSelected ? 'Ajouter un Lot (Immeuble / Résidence)' : 'Ajouter un Bien Locatif'}
+            </h1>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+              {isLotSelected
+                ? 'Créez un immeuble, une résidence ou un lot pour y regrouper vos appartements et unités'
+                : 'Renseignez les caractéristiques physiques et financières de l’unité locative'}
+            </p>
+          </div>
+          {quotas && (
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <div style={{
+                padding: '8px 12px',
+                borderRadius: '10px',
+                backgroundColor: lotQuotaReached ? '#fef2f2' : '#fef3c7',
+                border: `1px solid ${lotQuotaReached ? '#fecaca' : '#fde68a'}`,
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                color: lotQuotaReached ? '#dc2626' : '#92400e'
+              }}>
+                Lots : {quotas.lots?.used || 0} / {(quotas.lots?.max || 1) >= 9999 ? '∞' : (quotas.lots?.max || 1)}
+              </div>
+              <div style={{
+                padding: '8px 12px',
+                borderRadius: '10px',
+                backgroundColor: propQuotaReached ? '#fef2f2' : '#eff6ff',
+                border: `1px solid ${propQuotaReached ? '#fecaca' : '#bfdbfe'}`,
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                color: propQuotaReached ? '#dc2626' : '#1e40af'
+              }}>
+                Biens : {quotas.properties?.used || 0} / {(quotas.properties?.max || 2) >= 9999 ? '∞' : (quotas.properties?.max || 2)}
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Quota Reached Banner for selected type */}
+        {quotaReached && (
+          <div style={{
+            backgroundColor: 'var(--warning-light)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+            borderRadius: 'var(--radius)',
+            padding: '16px',
+            color: '#92400e',
+            fontSize: '0.875rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <AlertCircle size={18} style={{ flexShrink: 0 }} />
+              <span>
+                {isLotSelected
+                  ? `Quota de lots atteint (${quotas?.lots?.used || 0}/${quotas?.lots?.max || 1}). Vous pouvez toujours créer un bien locatif si votre quota de biens n'est pas atteint, ou surclasser votre offre.`
+                  : `Quota de biens immobiliers atteint (${quotas?.properties?.used || 0}/${quotas?.properties?.max || 2}). Veuillez surclasser votre forfait pour ajouter de nouvelles unités.`}
+              </span>
+            </div>
+            <Link href="/subscription" className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '6px 14px' }}>
+              Changer de forfait
+            </Link>
+          </div>
+        )}
 
         {/* Error Banner */}
         {error && (
@@ -335,24 +402,31 @@ export default function CreatePropertyPage() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">TYPE DE BIEN *</label>
+                <label className="form-label">CATÉGORIE & TYPE *</label>
                 <select
                   className={`form-control ${fieldErrors.type ? 'is-invalid' : ''}`}
                   value={type}
                   onChange={(e) => {
-                    setType(e.target.value);
+                    const nextType = e.target.value;
+                    setType(nextType);
+                    if (['building', 'residence', 'lot'].includes(nextType)) {
+                      setParentId('');
+                    }
                     clearFieldError('type');
                   }}
-                  disabled={quotaReached}
                 >
-                  <option value="apartment">Appartement</option>
-                  <option value="villa">Villa</option>
-                  <option value="building">Immeuble</option>
-                  <option value="residence">Résidence</option>
-                  <option value="lot">Lot / Ensemble Immobilier</option>
-                  <option value="shop">Boutique / Commerce</option>
-                  <option value="office">Bureau</option>
-                  <option value="parking">Parking</option>
+                  <optgroup label="Biens Locatifs (Unités louables)">
+                    <option value="apartment">Appartement</option>
+                    <option value="villa">Villa</option>
+                    <option value="shop">Boutique / Commerce</option>
+                    <option value="office">Bureau</option>
+                    <option value="parking">Parking</option>
+                  </optgroup>
+                  <optgroup label="Lots (Regroupements d'unités)">
+                    <option value="building">Immeuble (Lot)</option>
+                    <option value="residence">Résidence / Cité (Lot)</option>
+                    <option value="lot">Lot / Ensemble Immobilier</option>
+                  </optgroup>
                 </select>
                 {fieldErrors.type && (
                   <div className="form-error">
@@ -371,12 +445,14 @@ export default function CreatePropertyPage() {
                 </label>
                 <select
                   className="form-control"
-                  value={parentId}
+                  value={isLotSelected ? '' : parentId}
                   onChange={(e) => handleParentLotChange(e.target.value)}
-                  disabled={quotaReached || lotsLoading}
+                  disabled={quotaReached || lotsLoading || isLotSelected}
                   style={{ fontWeight: parentId ? '700' : '400', color: parentId ? 'var(--primary)' : 'inherit' }}
                 >
-                  <option value="">-- Aucun (Bien individuel indépendant) --</option>
+                  <option value="">
+                    {isLotSelected ? '-- Non applicable (ceci est déjà un Lot) --' : '-- Aucun (Bien individuel indépendant) --'}
+                  </option>
                   {lots.map((l: any) => (
                     <option key={l.id} value={l.id}>
                       {l.name} ({l.type}) · {l.city}

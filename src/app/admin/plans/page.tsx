@@ -113,9 +113,58 @@ const ALL_FEATURE_OPTIONS: PlanFeatureOption[] = [
   { 
     code: 'multi_users', 
     label: 'Accès multi-gestionnaires & collaborateurs RBAC', 
-    hint: 'Contrôle la création de collaborateurs dans /users (Starter: 1, Pro: 2, Expert: illimité)',
+    hint: 'Contrôle la création de collaborateurs dans /users et /managers (Starter: 1, Pro: 2, Expert: illimité)',
     nature: 'software_enforced', 
     category: 'enterprise' 
+  },
+  { 
+    code: 'managers_portfolio', 
+    label: 'Portefeuilles cloisonnés par gérant', 
+    hint: 'Affectation granulaire des lots et biens par gestionnaire avec isolation des vues',
+    nature: 'software_enforced', 
+    category: 'enterprise' 
+  },
+  { 
+    code: 'landlords_crg', 
+    label: 'Espace Bailleurs & Comptes-Rendus de Gestion (CRG)', 
+    hint: 'Déverrouille /landlords et la génération des états financiers PDF bailleurs',
+    nature: 'software_enforced', 
+    category: 'enterprise' 
+  },
+  { 
+    code: 'expense_workflow', 
+    label: 'Circuit de validation des dépenses & travaux', 
+    hint: 'Soumission de devis, approbation propriétaire/admin et imputation comptable sur incidents',
+    nature: 'software_enforced', 
+    category: 'compliance' 
+  },
+  { 
+    code: 'risk_scoring', 
+    label: 'Scoring prédictif de risque locataire', 
+    hint: 'Calcul algorithmique du score de solvabilité (0-100) et probabilités de défaut',
+    nature: 'software_enforced', 
+    category: 'automation' 
+  },
+  { 
+    code: 'advanced_stats', 
+    label: 'Statistiques avancées par lot & bien', 
+    hint: 'Analyse de rentabilité nette, vacance et pannes consolidées par immeuble/lot',
+    nature: 'software_enforced', 
+    category: 'compliance' 
+  },
+  { 
+    code: 'white_label', 
+    label: 'Marque Blanche Agence (Logo, couleurs, cachet)', 
+    hint: 'Personnalisation complète des PDF officiels aux couleurs et en-tête de l\'agence (/agency/branding)',
+    nature: 'software_enforced', 
+    category: 'enterprise' 
+  },
+  { 
+    code: 'e_signature', 
+    label: 'Signature électronique OTP des baux', 
+    hint: 'Signature certifiée SHA-256 par code OTP Email/SMS avec certificat d\'audit',
+    nature: 'software_enforced', 
+    category: 'compliance' 
   },
 
   // --- ENGAGEMENTS COMMERCIAUX & SERVICE / SLA ---
@@ -162,6 +211,7 @@ export default function AdminPlansPage() {
   const [description, setDescription] = useState('');
   const [priceMonthlyXof, setPriceMonthlyXof] = useState<string>('24900');
   const [yearlyDiscountPercent, setYearlyDiscountPercent] = useState<string>('20');
+  const [maxLots, setMaxLots] = useState<string>('5');
   const [maxProperties, setMaxProperties] = useState<string>('15');
   const [maxTenants, setMaxTenants] = useState<string>('15');
   const [isRecommended, setIsRecommended] = useState<boolean>(false);
@@ -203,6 +253,7 @@ export default function AdminPlansPage() {
     setDescription('');
     setPriceMonthlyXof('24900');
     setYearlyDiscountPercent('20');
+    setMaxLots('5');
     setMaxProperties('15');
     setMaxTenants('15');
     setIsRecommended(false);
@@ -217,6 +268,7 @@ export default function AdminPlansPage() {
     setDescription(p.description || '');
     setPriceMonthlyXof(String(p.priceMonthlyXof || 0));
     setYearlyDiscountPercent(String(p.yearlyDiscountPercent ?? 20));
+    setMaxLots(String(p.maxLots ?? (p.code === 'starter' ? 1 : p.code === 'expert' ? 9999 : 5)));
     setMaxProperties(String(p.maxProperties || 15));
     setMaxTenants(String(p.maxTenants || 15));
     setIsRecommended(Boolean(p.isRecommended));
@@ -249,6 +301,7 @@ export default function AdminPlansPage() {
       description: description || undefined,
       priceMonthlyXof: Number(priceMonthlyXof),
       yearlyDiscountPercent: Number(yearlyDiscountPercent),
+      maxLots: Number(maxLots),
       maxProperties: Number(maxProperties),
       maxTenants: Number(maxTenants),
       isRecommended,
@@ -459,7 +512,7 @@ export default function AdminPlansPage() {
 
           <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 18, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
             <div style={{ color: '#64748b', fontSize: '0.775rem', fontWeight: 800 }}>MODULES APPLICATIFS EN CODE</div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--primary)', marginTop: 4 }}>11 Modules</div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--primary)', marginTop: 4 }}>{softwareEnforcedFeatures.length} Modules</div>
             <span style={{ fontSize: '0.725rem', color: '#15803d', fontWeight: 700 }}>Contrôle logiciel actif & sécurisé</span>
           </div>
 
@@ -692,16 +745,22 @@ export default function AdminPlansPage() {
                   </div>
 
                   {/* QUOTAS */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 20 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 20 }}>
+                    <div style={{ backgroundColor: '#fef3c7', padding: 12, borderRadius: 12, border: '1px solid #fde68a' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#92400e', fontWeight: 800 }}>LOTS / IMMEUBLES</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 900, color: '#78350f', marginTop: 2 }}>
+                        {(p.maxLots ?? 1) >= 9999 ? 'Illimité' : `${p.maxLots ?? 1} Max`}
+                      </div>
+                    </div>
                     <div style={{ backgroundColor: '#eff6ff', padding: 12, borderRadius: 12, border: '1px solid #bfdbfe' }}>
-                      <div style={{ fontSize: '0.725rem', color: '#1e40af', fontWeight: 800 }}>BIENS IMMOBILIERS</div>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#1e3a8a', marginTop: 2 }}>
+                      <div style={{ fontSize: '0.7rem', color: '#1e40af', fontWeight: 800 }}>BIENS LOCATIFS</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 900, color: '#1e3a8a', marginTop: 2 }}>
                         {p.maxProperties >= 9999 ? 'Illimité' : `${p.maxProperties} Max`}
                       </div>
                     </div>
                     <div style={{ backgroundColor: '#f0fdf4', padding: 12, borderRadius: 12, border: '1px solid #bbf7d0' }}>
-                      <div style={{ fontSize: '0.725rem', color: '#166534', fontWeight: 800 }}>LOCATAIRES ACTIFS</div>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#14532d', marginTop: 2 }}>
+                      <div style={{ fontSize: '0.7rem', color: '#166534', fontWeight: 800 }}>LOCATAIRES</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 900, color: '#14532d', marginTop: 2 }}>
                         {p.maxTenants >= 9999 ? 'Illimité' : `${p.maxTenants} Max`}
                       </div>
                     </div>
@@ -1155,31 +1214,48 @@ export default function AdminPlansPage() {
                 </div>
 
                 {/* QUOTAS VOLUMÉTRIQUES */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
                   <div>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a', display: 'block', marginBottom: 6 }}>
-                      QUOTA BIENS IMMOBILIERS MAX *
+                    <label style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0f172a', display: 'block', marginBottom: 6 }}>
+                      QUOTA LOTS (IMMEUBLES) MAX *
                     </label>
                     <input
                       type="number"
-                      placeholder="Ex: 15 (Saisir 9999 pour illimité)"
-                      value={maxProperties}
-                      onChange={(e) => setMaxProperties(e.target.value)}
+                      placeholder="Ex: 5 (9999 = illimité)"
+                      value={maxLots}
+                      onChange={(e) => setMaxLots(e.target.value)}
                       required
+                      min="1"
                       style={{ width: '100%', border: '1px solid #cbd5e1', borderRadius: 10, padding: '10px 14px', fontSize: '0.9rem', outline: 'none', fontWeight: 600 }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a', display: 'block', marginBottom: 6 }}>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0f172a', display: 'block', marginBottom: 6 }}>
+                      QUOTA BIENS IMMOBILIERS MAX *
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Ex: 15 (9999 = illimité)"
+                      value={maxProperties}
+                      onChange={(e) => setMaxProperties(e.target.value)}
+                      required
+                      min="1"
+                      style={{ width: '100%', border: '1px solid #cbd5e1', borderRadius: 10, padding: '10px 14px', fontSize: '0.9rem', outline: 'none', fontWeight: 600 }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0f172a', display: 'block', marginBottom: 6 }}>
                       QUOTA LOCATAIRES ACTIFS MAX *
                     </label>
                     <input
                       type="number"
-                      placeholder="Ex: 15 (Saisir 9999 pour illimité)"
+                      placeholder="Ex: 15 (9999 = illimité)"
                       value={maxTenants}
                       onChange={(e) => setMaxTenants(e.target.value)}
                       required
+                      min="1"
                       style={{ width: '100%', border: '1px solid #cbd5e1', borderRadius: 10, padding: '10px 14px', fontSize: '0.9rem', outline: 'none', fontWeight: 600 }}
                     />
                   </div>

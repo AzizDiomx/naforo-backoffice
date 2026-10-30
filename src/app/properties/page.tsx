@@ -201,9 +201,13 @@ export default function PropertiesPage() {
     return matchesSearch && matchesType && matchesStatus && matchesCountry;
   });
 
-  const quotaReached = subscription ? subscription.quotas?.properties?.reached : false;
-  const currentCount = subscription ? subscription.quotas?.properties?.used : 0;
-  const maxLimit = subscription ? subscription.quotas?.properties?.max : 2;
+  const propQuotaReached = subscription ? Boolean(subscription.quotas?.properties?.reached) : false;
+  const lotQuotaReached = subscription ? Boolean(subscription.quotas?.lots?.reached) : false;
+  const bothQuotasReached = propQuotaReached && lotQuotaReached;
+  const currentPropCount = subscription ? (subscription.quotas?.properties?.used ?? 0) : 0;
+  const maxPropLimit = subscription ? (subscription.quotas?.properties?.max ?? 2) : 2;
+  const currentLotCount = subscription ? (subscription.quotas?.lots?.used ?? 0) : 0;
+  const maxLotLimit = subscription ? (subscription.quotas?.lots?.max ?? 1) : 1;
 
   if (loading) {
     return (
@@ -230,9 +234,31 @@ export default function PropertiesPage() {
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {subscription?.quotas && (
+              <div style={{ display: 'flex', gap: '8px', fontSize: '0.78rem', fontWeight: 700 }}>
+                <span style={{
+                  padding: '6px 10px',
+                  borderRadius: '8px',
+                  backgroundColor: lotQuotaReached ? '#fef2f2' : '#fef3c7',
+                  color: lotQuotaReached ? '#dc2626' : '#92400e',
+                  border: `1px solid ${lotQuotaReached ? '#fecaca' : '#fde68a'}`
+                }}>
+                  Lots : {currentLotCount}/{maxLotLimit >= 9999 ? '∞' : maxLotLimit}
+                </span>
+                <span style={{
+                  padding: '6px 10px',
+                  borderRadius: '8px',
+                  backgroundColor: propQuotaReached ? '#fef2f2' : '#eff6ff',
+                  color: propQuotaReached ? '#dc2626' : '#1e40af',
+                  border: `1px solid ${propQuotaReached ? '#fecaca' : '#bfdbfe'}`
+                }}>
+                  Biens : {currentPropCount}/{maxPropLimit >= 9999 ? '∞' : maxPropLimit}
+                </span>
+              </div>
+            )}
             <Link
-              href={quotaReached ? '/subscription' : '/properties/create'}
+              href={bothQuotasReached ? '/subscription' : '/properties/create'}
               className="btn btn-primary"
               style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
@@ -243,7 +269,7 @@ export default function PropertiesPage() {
         </div>
 
         {/* Quota Alert Banner */}
-        {quotaReached && (
+        {(propQuotaReached || lotQuotaReached) && (
           <div style={{
             backgroundColor: 'var(--warning-light)',
             border: '1px solid rgba(245, 158, 11, 0.2)',
@@ -256,9 +282,15 @@ export default function PropertiesPage() {
           }}>
             <ShieldAlert size={24} style={{ color: 'var(--warning)', flexShrink: 0 }} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
-              <span style={{ fontSize: '0.875rem', fontWeight: '600' }}>Limite de biens atteinte ({currentCount} / {maxLimit})</span>
+              <span style={{ fontSize: '0.875rem', fontWeight: '600' }}>
+                {bothQuotasReached
+                  ? `Quotas atteints : Lots (${currentLotCount}/${maxLotLimit}) & Biens (${currentPropCount}/${maxPropLimit})`
+                  : lotQuotaReached
+                  ? `Quota de Lots atteint (${currentLotCount}/${maxLotLimit}) — Biens restants : ${Math.max(0, maxPropLimit - currentPropCount)}`
+                  : `Quota de Biens atteint (${currentPropCount}/${maxPropLimit}) — Lots restants : ${Math.max(0, maxLotLimit - currentLotCount)}`}
+              </span>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Votre forfait actuel ne vous permet pas de créer de nouveaux biens. Veuillez passer à un forfait supérieur pour étendre votre parc.
+                Lots (immeubles/résidences) et Biens (appartements/unités) disposent de quotas distincts dans votre forfait. Surclassez votre abonnement pour augmenter vos capacités.
               </span>
             </div>
             <Link href="/subscription" className="btn btn-secondary" style={{ fontSize: '0.8125rem', padding: '6px 12px' }}>

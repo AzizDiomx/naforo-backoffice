@@ -116,6 +116,13 @@ export default function SubscriptionPage() {
     chat_encrypted: 'Messagerie locataires intégrée chiffrée',
     incident_management: 'Gestion des pannes & tickets d\'intervention',
     multi_users: 'Multi-gestionnaires & collaborateurs d’agence',
+    managers_portfolio: 'Portefeuilles cloisonnés par gérant',
+    landlords_crg: 'Espace Bailleurs & Comptes-Rendus de Gestion (CRG)',
+    expense_workflow: 'Circuit de validation des dépenses & travaux',
+    risk_scoring: 'Scoring prédictif de risque locataire',
+    advanced_stats: 'Statistiques avancées par lot & bien',
+    white_label: 'Marque Blanche Agence (Logo, couleurs, cachet)',
+    e_signature: 'Signature électronique OTP des baux',
     agency_mandates: 'Mandats de gérance & multi-bailleurs',
     dgi_accounting_export: 'Conformité fiscale & bilans DGI',
     api_webhooks: 'Accès API & intégrations webhooks',
@@ -336,7 +343,7 @@ export default function SubscriptionPage() {
 
         {/* 2. Critical Alert Banners (Sans bordure gauche colorée) */}
 
-        {/* ALERTE A1: Fin de période d'essai Starter (60 jours) */}
+        {/* ALERTE A1: Fin de période d'essai Starter (3 mois) */}
         {mySub?.isStarterTrialExpired && (
           <div className="card" style={{
             backgroundColor: '#fffbeb',
@@ -366,12 +373,12 @@ export default function SubscriptionPage() {
                   Période d'essai Starter terminée
                 </h3>
                 <span style={{ backgroundColor: '#FEF3C7', color: '#92400E', border: '1px solid #FCD34D', padding: '2px 8px', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 700 }}>
-                  Offre Starter · 60 jours
+                  Offre Starter · 3 mois
                 </span>
                 <span className="badge badge-warning">Mode consultation</span>
               </div>
               <p style={{ fontSize: '0.875rem', color: '#78350f', margin: '0 0 14px 0', lineHeight: 1.55 }}>
-                Vos 60 jours d’évaluation gratuite du forfait Starter sont arrivés à échéance. Vos biens, locataires, baux et quittances restent soigneusement sauvegardés et consultables. Pour réactiver l'émission de quittances et la création de nouveaux éléments, souscrivez à une formule d'abonnement ou contactez notre équipe.
+                Vos 3 mois d’évaluation gratuite du forfait Starter sont arrivés à échéance. Vos lots, biens, locataires, baux et quittances restent soigneusement sauvegardés et consultables. Pour réactiver l'émission de quittances et la création de nouveaux éléments, souscrivez à une formule d'abonnement ou contactez notre équipe.
               </p>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <button
@@ -679,11 +686,43 @@ export default function SubscriptionPage() {
                 </div>
               </div>
 
-              {/* Card 2: Quota Biens Immobiliers */}
+              {/* Card 2: Quota Lots (Immeubles / Résidences) */}
               <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    QUOTA BIENS IMMOBILIERS
+                    QUOTA LOTS (IMMEUBLES / RÉSIDENCES)
+                  </span>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', backgroundColor: '#fef3c7', color: '#b45309', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Layers size={14} />
+                  </div>
+                </div>
+
+                <div>
+                  <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: 'var(--text)' }}>
+                    {mySub?.quotas?.lots?.used || 0} <span style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-muted)' }}>/ {(mySub?.quotas?.lots?.max || 1) >= 9999 ? 'Illimité' : `${mySub?.quotas?.lots?.max || 1} lot(s)`}</span>
+                  </h3>
+                  <span style={{ fontSize: '0.8125rem', color: mySub?.quotas?.lots?.reached ? 'var(--danger)' : 'var(--text-muted)' }}>
+                    {mySub?.quotas?.lots?.reached ? 'Quota maximal de lots atteint' : (mySub?.quotas?.lots?.max || 1) >= 9999 ? 'Lots illimités' : `${Math.max(0, (mySub?.quotas?.lots?.max || 1) - (mySub?.quotas?.lots?.used || 0))} lot(s) disponible(s)`}
+                  </span>
+                </div>
+
+                <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      width: `${Math.min(100, Math.round(((mySub?.quotas?.lots?.used || 0) / (mySub?.quotas?.lots?.max || 1)) * 100))}%`,
+                      height: '100%',
+                      backgroundColor: mySub?.quotas?.lots?.reached ? 'var(--danger)' : '#d97706',
+                      transition: 'width 0.3s ease'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Card 3: Quota Biens Immobiliers */}
+              <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    QUOTA BIENS IMMOBILIERS (UNITÉS)
                   </span>
                   <div style={{ width: '28px', height: '28px', borderRadius: '8px', backgroundColor: '#f1f5f9', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Building size={14} />
@@ -692,10 +731,10 @@ export default function SubscriptionPage() {
 
                 <div>
                   <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: 'var(--text)' }}>
-                    {mySub?.quotas?.properties?.used || 0} <span style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-muted)' }}>/ {mySub?.quotas?.properties?.max || 2} biens</span>
+                    {mySub?.quotas?.properties?.used || 0} <span style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-muted)' }}>/ {(mySub?.quotas?.properties?.max || 2) >= 9999 ? 'Illimité' : `${mySub?.quotas?.properties?.max || 2} biens`}</span>
                   </h3>
                   <span style={{ fontSize: '0.8125rem', color: (mySub?.quotas?.properties?.used || 0) >= (mySub?.quotas?.properties?.max || 2) ? 'var(--danger)' : 'var(--text-muted)' }}>
-                    {(mySub?.quotas?.properties?.used || 0) >= (mySub?.quotas?.properties?.max || 2) ? 'Quota maximal atteint' : `${Math.max(0, (mySub?.quotas?.properties?.max || 2) - (mySub?.quotas?.properties?.used || 0))} place(s) disponible(s)`}
+                    {(mySub?.quotas?.properties?.used || 0) >= (mySub?.quotas?.properties?.max || 2) ? 'Quota maximal atteint' : (mySub?.quotas?.properties?.max || 2) >= 9999 ? 'Biens illimités' : `${Math.max(0, (mySub?.quotas?.properties?.max || 2) - (mySub?.quotas?.properties?.used || 0))} place(s) disponible(s)`}
                   </span>
                 </div>
 
@@ -711,7 +750,7 @@ export default function SubscriptionPage() {
                 </div>
               </div>
 
-              {/* Card 3: Quota Locataires */}
+              {/* Card 4: Quota Locataires */}
               <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -724,10 +763,10 @@ export default function SubscriptionPage() {
 
                 <div>
                   <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: 'var(--text)' }}>
-                    {mySub?.quotas?.tenants?.used || 0} <span style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-muted)' }}>/ {mySub?.quotas?.tenants?.max || 2} locataires</span>
+                    {mySub?.quotas?.tenants?.used || 0} <span style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-muted)' }}>/ {(mySub?.quotas?.tenants?.max || 2) >= 9999 ? 'Illimité' : `${mySub?.quotas?.tenants?.max || 2} locataires`}</span>
                   </h3>
                   <span style={{ fontSize: '0.8125rem', color: (mySub?.quotas?.tenants?.used || 0) >= (mySub?.quotas?.tenants?.max || 2) ? 'var(--danger)' : 'var(--text-muted)' }}>
-                    {(mySub?.quotas?.tenants?.used || 0) >= (mySub?.quotas?.tenants?.max || 2) ? 'Quota maximal atteint' : `${Math.max(0, (mySub?.quotas?.tenants?.max || 2) - (mySub?.quotas?.tenants?.used || 0))} place(s) disponible(s)`}
+                    {(mySub?.quotas?.tenants?.used || 0) >= (mySub?.quotas?.tenants?.max || 2) ? 'Quota maximal atteint' : (mySub?.quotas?.tenants?.max || 2) >= 9999 ? 'Locataires illimités' : `${Math.max(0, (mySub?.quotas?.tenants?.max || 2) - (mySub?.quotas?.tenants?.used || 0))} place(s) disponible(s)`}
                   </span>
                 </div>
 
@@ -975,11 +1014,15 @@ export default function SubscriptionPage() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.8125rem', marginBottom: '24px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <Check size={16} color="var(--success)" style={{ flexShrink: 0 }} />
-                          <span><strong>Jusqu’à {plan.maxProperties} biens</strong> immobiliers</span>
+                          <span><strong>{(plan.maxLots ?? 1) >= 9999 ? 'Lots (immeubles) illimités' : `Jusqu’à ${plan.maxLots ?? 1} lot(s)`}</strong> (immeubles / résidences)</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <Check size={16} color="var(--success)" style={{ flexShrink: 0 }} />
-                          <span><strong>Jusqu’à {plan.maxTenants} locataires</strong> actifs</span>
+                          <span><strong>{plan.maxProperties >= 9999 ? 'Biens locatifs illimités' : `Jusqu’à ${plan.maxProperties} biens`}</strong> immobiliers</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Check size={16} color="var(--success)" style={{ flexShrink: 0 }} />
+                          <span><strong>{plan.maxTenants >= 9999 ? 'Locataires illimités' : `Jusqu’à ${plan.maxTenants} locataires`}</strong> actifs</span>
                         </div>
                         {features.map((feat: string, fIdx: number) => (
                           <div key={fIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1204,7 +1247,7 @@ export default function SubscriptionPage() {
                 </div>
               </div>
               <span style={{ fontSize: '0.75rem', backgroundColor: '#e2e8f0', padding: '4px 8px', borderRadius: '4px', fontWeight: 600 }}>
-                Jusqu’à {selectedPlanForCheckout.maxProperties} biens
+                {selectedPlanForCheckout.maxProperties >= 9999 ? 'Lots & Biens illimités' : `Jusqu’à ${selectedPlanForCheckout.maxLots ?? 5} lots · ${selectedPlanForCheckout.maxProperties} biens`}
               </span>
             </div>
 

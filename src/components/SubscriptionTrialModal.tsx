@@ -42,7 +42,7 @@ export default function SubscriptionTrialModal({
   };
 
   const whatsappPrefilledMessage = encodeURIComponent(
-    `Bonjour l'équipe Naforo,\n\nMa période d'essai de 60 jours pour l'offre Starter est arrivée à son terme sur mon espace de gestion. Je souhaite être guidé(e) pour choisir et souscrire à une formule d'abonnement adaptée à mon patrimoine.`
+    `Bonjour l'équipe Naforo,\n\nMa période d'essai de 3 mois pour l'offre Starter est arrivée à son terme sur mon espace de gestion. Je souhaite être guidé(e) pour choisir et souscrire à une formule d'abonnement adaptée à mon patrimoine.`
   );
 
   const whatsappDirectUrl = `https://wa.me/${support.whatsapp.replace(/[^0-9]/g, '')}?text=${whatsappPrefilledMessage}`;
@@ -161,7 +161,7 @@ export default function SubscriptionTrialModal({
                   border: '1px solid #FCD34D',
                 }}
               >
-                Offre Découverte Starter · 60 jours
+                Offre Découverte Starter · 3 mois
               </span>
               <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px', fontWeight: 500 }}>
                 Période de test achevée
@@ -191,7 +191,7 @@ export default function SubscriptionTrialModal({
               margin: '0 0 20px 0',
             }}
           >
-            Vos <strong>60 jours d’évaluation</strong> de la formule Starter sont arrivés à échéance.
+            Vos <strong>3 mois d’évaluation</strong> de la formule Starter sont arrivés à échéance.
             Votre espace passe temporairement en <strong>mode consultation sécurisée</strong>.
           </p>
 

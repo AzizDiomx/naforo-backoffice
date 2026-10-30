@@ -97,7 +97,25 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     if (userRole === 'super_admin') return true;
     const pCode = (planCode || '').toLowerCase();
     if (pCode.includes('expert') || pCode.includes('agency')) return true;
-    return features.includes(featureCode);
+    if (features.includes(featureCode)) return true;
+    if (pCode.includes('pro')) {
+      return [
+        'dashboard',
+        'standard_pdf',
+        'email_reminders',
+        'sms_whatsapp',
+        'mobile_money_autovalidate',
+        'qr_code_verification',
+        'excel_export',
+        'ged_vault',
+        'chat_encrypted',
+        'incident_management',
+        'expense_workflow',
+        'risk_scoring',
+        'advanced_stats',
+      ].includes(featureCode);
+    }
+    return false;
   };
 
   const allOwnerMenuItems = [
@@ -105,8 +123,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { name: 'Notifications', href: '/notifications', icon: Bell, feature: 'base', group: 'PRINCIPAL' },
 
     { name: 'Biens Immobiliers', href: '/properties', icon: Building2, feature: 'base', group: 'GESTION LOCATIVE' },
-    { name: 'Gérants & Équipe', href: '/managers', icon: ShieldCheck, feature: 'base', group: 'GESTION LOCATIVE' },
-    { name: 'Bailleurs & CRG', href: '/landlords', icon: Landmark, feature: 'base', group: 'GESTION LOCATIVE' },
+    { name: 'Gérants & Équipe', href: '/managers', icon: ShieldCheck, feature: 'multi_users', group: 'GESTION LOCATIVE' },
+    { name: 'Bailleurs & CRG', href: '/landlords', icon: Landmark, feature: 'landlords_crg', group: 'GESTION LOCATIVE' },
     { name: 'Locataires', href: '/tenants', icon: Users2, feature: 'base', group: 'GESTION LOCATIVE' },
     { name: 'Contrats de Bail', href: '/contracts', icon: FileText, feature: 'base', group: 'GESTION LOCATIVE' },
     { name: 'Incidents & Pannes', href: '/incidents', icon: AlertTriangle, feature: 'base', group: 'GESTION LOCATIVE' },
@@ -117,7 +135,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
     { name: 'Messagerie Locataires', href: '/chat', icon: MessageSquare, feature: 'chat_encrypted', group: 'SERVICES PRO' },
     { name: 'Coffre-fort (GED)', href: '/documents', icon: FolderKanban, feature: 'ged_vault', group: 'SERVICES PRO' },
-    { name: 'Marque Blanche Agence', href: '/agency/branding', icon: Palette, feature: 'base', group: 'SERVICES PRO' },
+    { name: 'Marque Blanche Agence', href: '/agency/branding', icon: Palette, feature: 'white_label', group: 'SERVICES PRO' },
     { name: 'Mon Abonnement', href: '/subscription', icon: Gem, feature: 'base', group: 'SERVICES PRO' },
   ];
 
