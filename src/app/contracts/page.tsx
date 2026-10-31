@@ -24,15 +24,19 @@ import {
 } from 'lucide-react';
 import Pagination from '@/components/Pagination';
 
+const LOT_TYPES = ['building', 'residence', 'lot'];
+
 export default function ContractsPage() {
   const [contracts, setContracts] = useState<any[]>([]);
   const [properties, setProperties] = useState<any[]>([]);
+  const [lots, setLots] = useState<any[]>([]);
   const [tenants, setTenants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filters State
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [lotFilter, setLotFilter] = useState('');
   const [propertyFilter, setPropertyFilter] = useState('');
   const [tenantFilter, setTenantFilter] = useState('');
 
@@ -42,15 +46,18 @@ export default function ContractsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
-  // 1. Charger la liste des biens et des locataires pour les filtres déroulants
+  // 1. Charger la liste des lots, des biens et des locataires pour les filtres déroulants
   useEffect(() => {
     Promise.all([
-      api.get('/properties?limit=100').catch(() => []),
-      api.get('/tenant-profiles?limit=100').catch(() => [])
-    ]).then(([propsRes, tenantsRes]) => {
-      const pList = Array.isArray(propsRes) ? propsRes : propsRes.data || propsRes.items || [];
-      const tList = Array.isArray(tenantsRes) ? tenantsRes : tenantsRes.data || tenantsRes.items || [];
-      setProperties(pList);
+      api.get('/properties?limit=200').catch(() => []),
+      api.get('/properties/lots').catch(() => []),
+      api.get('/tenant-profiles?limit=200').catch(() => [])
+    ]).then(([propsRes, lotsRes, tenantsRes]) => {
+      const pList = Array.isArray(propsRes) ? propsRes : (propsRes as any)?.data || (propsRes as any)?.items || [];
+      const lList = Array.isArray(lotsRes) ? lotsRes : [];
+      const tList = Array.isArray(tenantsRes) ? tenantsRes : (tenantsRes as any)?.data || (tenantsRes as any)?.items || [];
+      setProperties(pList.filter((p: any) => !LOT_TYPES.includes(p.type)));
+      setLots(lList);
       setTenants(tList);
     });
   }, []);
@@ -136,10 +143,15 @@ export default function ContractsPage() {
       propertyCity.includes(s);
 
     const matchesStatus = !statusFilter ? true : c.status === statusFilter;
+    const matchesLot = !lotFilter
+      ? true
+      : lotFilter === '__independent__'
+      ? !c.property?.parentId && !c.property?.parent?.id
+      : c.property?.parentId === lotFilter || c.property?.parent?.id === lotFilter;
     const matchesProperty = !propertyFilter ? true : c.propertyId === propertyFilter || c.property?.id === propertyFilter;
     const matchesTenant = !tenantFilter ? true : c.tenantProfileId === tenantFilter || c.tenantProfile?.id === tenantFilter;
 
-    return matchesSearch && matchesStatus && matchesProperty && matchesTenant;
+    return matchesSearch && matchesStatus && matchesLot && matchesProperty && matchesTenant;
   });
 
   if (loading && contracts.length === 0) {
@@ -205,15 +217,38 @@ export default function ContractsPage() {
 
           <select
             className="form-control"
+            value={lotFilter}
+            onChange={(e) => {
+              setLotFilter(e.target.value);
+              setPropertyFilter('');
+            }}
+          >
+            <option value="">Tous les lots (Immeubles)</option>
+            {lots.map((l) => (
+              <option key={l.id} value={l.id}>
+                🏢 {l.name}
+              </option>
+            ))}
+            <option value="__independent__">🏠 Biens indépendants (Hors lot)</option>
+          </select>
+
+          <select
+            className="form-control"
             value={propertyFilter}
             onChange={(e) => setPropertyFilter(e.target.value)}
           >
             <option value="">Tous les biens loués</option>
-            {properties.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
+            {properties
+              .filter((p) => {
+                if (!lotFilter) return true;
+                if (lotFilter === '__independent__') return !p.parentId && !p.parent?.id;
+                return p.parentId === lotFilter || p.parent?.id === lotFilter;
+              })
+              .map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.parent?.name ? `[${p.parent.name}] ` : ''}{p.name}
+                </option>
+              ))}
           </select>
 
           <select
@@ -292,7 +327,12 @@ export default function ContractsPage() {
                                 {property.name}
                               </Link>
                             </div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
+                              {property.parent?.name && (
+                                <span style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '1px 6px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 700 }}>
+                                  🏢 Lot : {property.parent.name}
+                                </span>
+                              )}
                               <MapPin size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                               <span style={{ backgroundColor: '#f1f5f9', color: '#475569', padding: '1px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '600' }}>
                                 {property.city || 'Abidjan'}

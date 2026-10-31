@@ -9,6 +9,8 @@ import {
   AlertCircle, 
   FileText, 
   Building2, 
+  Layers,
+  Plus,
   User, 
   Calendar, 
   DollarSign, 
@@ -18,8 +20,19 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
+const LOT_TYPES = ['building', 'residence', 'lot'];
+const TYPE_LABELS: Record<string, string> = {
+  apartment: 'Appartement',
+  villa: 'Villa',
+  shop: 'Boutique / Commerce',
+  office: 'Bureau',
+  parking: 'Parking',
+};
+
 export default function CreateContractPage() {
   const [properties, setProperties] = useState<any[]>([]);
+  const [lots, setLots] = useState<any[]>([]);
+  const [selectedLotId, setSelectedLotId] = useState<string>('all');
   const [tenants, setTenants] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
@@ -50,20 +63,60 @@ export default function CreateContractPage() {
 
   useEffect(() => {
     Promise.all([
-      api.get('/properties?limit=100').catch(() => []),
-      api.get('/tenant-profiles?limit=100').catch(() => [])
+      api.get('/properties?limit=200').catch(() => []),
+      api.get('/properties/lots').catch(() => []),
+      api.get('/tenant-profiles?limit=200').catch(() => [])
     ])
-      .then(([propsData, tenantsData]) => {
-        const props = Array.isArray(propsData) ? propsData : propsData.items || propsData.data || [];
-        // Filtrer les biens disponibles
-        setProperties(props.filter((p: any) => p.status === 'available'));
-        setTenants(Array.isArray(tenantsData) ? tenantsData : tenantsData.items || tenantsData.data || []);
+      .then(([propsData, lotsData, tenantsData]) => {
+        const props = Array.isArray(propsData) ? propsData : (propsData as any)?.items || (propsData as any)?.data || [];
+        const rawLots = Array.isArray(lotsData) ? lotsData : [];
+        const fallbackLots = props.filter((p: any) => LOT_TYPES.includes(p.type));
+        const mergedLotsMap = new Map<string, any>();
+        [...rawLots, ...fallbackLots].forEach((l: any) => {
+          if (l && l.id && !mergedLotsMap.has(l.id)) mergedLotsMap.set(l.id, l);
+        });
+        const allLots = Array.from(mergedLotsMap.values());
+        setLots(allLots);
+
+        // Filtrer uniquement les biens locatifs disponibles (exclure les conteneurs de type Lot)
+        const rentableAvailable = props.filter(
+          (p: any) => p.status === 'available' && !LOT_TYPES.includes(p.type)
+        );
+        setProperties(rentableAvailable);
+        setTenants(Array.isArray(tenantsData) ? tenantsData : (tenantsData as any)?.items || (tenantsData as any)?.data || []);
+
+        if (typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search);
+          const preLotId = params.get('lotId');
+          const prePropId = params.get('propertyId');
+          if (preLotId) setSelectedLotId(preLotId);
+          if (prePropId) {
+            const foundProp = rentableAvailable.find((p: any) => p.id === prePropId);
+            if (foundProp) {
+              setPropertyId(foundProp.id);
+              if (foundProp.parentId) setSelectedLotId(foundProp.parentId);
+              setRentAmount(foundProp.rentAmount ? Number(foundProp.rentAmount) : '');
+              setChargesAmount(foundProp.chargesAmount ? Number(foundProp.chargesAmount) : 0);
+              const d = foundProp.depositAmount ? Number(foundProp.depositAmount) : 0;
+              setDepositAmount(d);
+              setCautionAmount(d);
+            }
+          }
+        }
         setDataLoading(false);
       })
       .catch(() => {
         setDataLoading(false);
       });
   }, []);
+
+  const filteredProperties = properties.filter((p: any) => {
+    if (selectedLotId === 'all') return true;
+    if (selectedLotId === '__independent__') return !p.parentId;
+    return p.parentId === selectedLotId || p.parent?.id === selectedLotId;
+  });
+
+  const selectedPropertyObj = properties.find((p: any) => p.id === propertyId);
 
   // Remplissage automatique des tarifs financiers lors de la sélection du bien
   const handlePropertyChange = (pId: string) => {
@@ -222,38 +275,198 @@ export default function CreateContractPage() {
             
             {/* 1. Parties prenantes */}
             <h3 style={{ fontSize: '1.1rem', fontWeight: '600', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
-              Parties Prenantes & Logement
+              Parties Prenantes & Attribution du Bien
             </h3>
 
-            <div className="form-group">
-              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Building2 size={14} style={{ color: 'var(--primary)' }} />
-                BIEN IMMOBILIER VACANT *
-              </label>
-              <select
-                className={`form-control ${fieldErrors.propertyId ? 'is-invalid' : ''}`}
-                value={propertyId}
-                onChange={(e) => handlePropertyChange(e.target.value)}
-              >
-                <option value="">Sélectionnez un logement vacant...</option>
-                {properties.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} — {p.city || 'Abidjan'} ({p.type})
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+              {/* Sélecteur de Lot Parent (Étape 1 : Filtrage hiérarchique Lot -> Bien) */}
+              <div className="form-group">
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Layers size={14} style={{ color: 'var(--primary)' }} />
+                  1. LOT / IMMEUBLE (FILTRE OPTIONNEL)
+                </label>
+                <select
+                  className="form-control"
+                  value={selectedLotId}
+                  onChange={(e) => {
+                    const nextLot = e.target.value;
+                    setSelectedLotId(nextLot);
+                    // Si le bien déjà sélectionné n'appartient pas à ce lot, on réinitialise la sélection du bien
+                    if (propertyId) {
+                      const currentProp = properties.find((p: any) => p.id === propertyId);
+                      if (currentProp) {
+                        const belongs =
+                          nextLot === 'all' ||
+                          (nextLot === '__independent__' && !currentProp.parentId) ||
+                          currentProp.parentId === nextLot ||
+                          currentProp.parent?.id === nextLot;
+                        if (!belongs) {
+                          setPropertyId('');
+                        }
+                      }
+                    }
+                  }}
+                >
+                  <option value="all">
+                    Tous les biens vacants ({properties.length} disponible{properties.length > 1 ? 's' : ''})
                   </option>
-                ))}
-              </select>
-              {fieldErrors.propertyId && (
-                <div className="form-error">
-                  <AlertCircle size={13} />
-                  <span>{fieldErrors.propertyId}</span>
-                </div>
-              )}
-              {properties.length === 0 && (
-                <span style={{ fontSize: '0.75rem', color: 'var(--warning)', marginTop: '4px', display: 'block' }}>
-                  ⚠️ Aucun bien disponible. Tous vos biens sont actuellement occupés ou en maintenance.
+                  {lots.length > 0 && (
+                    <optgroup label="Lots (Immeubles / Résidences)">
+                      {lots.map((lot: any) => {
+                        const vacantInLot = properties.filter(
+                          (p: any) => p.parentId === lot.id || p.parent?.id === lot.id
+                        ).length;
+                        return (
+                          <option key={lot.id} value={lot.id}>
+                            🏢 {lot.name} ({lot.city || 'Abidjan'}) — {vacantInLot} bien{vacantInLot > 1 ? 's' : ''} vacant{vacantInLot > 1 ? 's' : ''}
+                          </option>
+                        );
+                      })}
+                    </optgroup>
+                  )}
+                  <option value="__independent__">
+                    🏠 Biens individuels indépendants (Hors lot : {properties.filter((p: any) => !p.parentId).length})
+                  </option>
+                </select>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                  Un lot regroupe plusieurs biens. Sélectionnez un lot pour filtrer ses unités locatives vacantes.
                 </span>
-              )}
+              </div>
+
+              {/* Sélecteur du Bien Locatif Vacant (Étape 2 : Attribution au locataire) */}
+              <div className="form-group">
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Building2 size={14} style={{ color: 'var(--primary)' }} />
+                  2. BIEN LOCATIF VACANT À LOUER *
+                </label>
+                <select
+                  className={`form-control ${fieldErrors.propertyId ? 'is-invalid' : ''}`}
+                  value={propertyId}
+                  onChange={(e) => handlePropertyChange(e.target.value)}
+                >
+                  <option value="">
+                    {filteredProperties.length === 0
+                      ? 'Aucun bien vacant dans cette sélection...'
+                      : 'Sélectionnez le bien à attribuer au locataire...'}
+                  </option>
+
+                  {selectedLotId === 'all' ? (
+                    <>
+                      {lots.map((lot: any) => {
+                        const lotUnits = properties.filter(
+                          (p: any) => p.parentId === lot.id || p.parent?.id === lot.id
+                        );
+                        if (lotUnits.length === 0) return null;
+                        return (
+                          <optgroup key={lot.id} label={`🏢 Lot : ${lot.name} (${lot.city || 'Abidjan'})`}>
+                            {lotUnits.map((p: any) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} — {TYPE_LABELS[p.type] || p.type}
+                                {p.rentAmount ? ` • ${Number(p.rentAmount).toLocaleString('fr-FR')} FCFA` : ''}
+                              </option>
+                            ))}
+                          </optgroup>
+                        );
+                      })}
+                      {properties.filter((p: any) => !p.parentId).length > 0 && (
+                        <optgroup label="🏠 Biens Individuels Indépendants (Hors Lot)">
+                          {properties
+                            .filter((p: any) => !p.parentId)
+                            .map((p: any) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} — {p.city || 'Abidjan'} ({TYPE_LABELS[p.type] || p.type}
+                                {p.rentAmount ? ` • ${Number(p.rentAmount).toLocaleString('fr-FR')} FCFA` : ''})
+                              </option>
+                            ))}
+                        </optgroup>
+                      )}
+                    </>
+                  ) : (
+                    filteredProperties.map((p: any) => (
+                      <option key={p.id} value={p.id}>
+                        {p.parent?.name ? `[${p.parent.name}] ` : ''}
+                        {p.name} — {p.city || 'Abidjan'} ({TYPE_LABELS[p.type] || p.type}
+                        {p.rentAmount ? ` • ${Number(p.rentAmount).toLocaleString('fr-FR')} FCFA` : ''})
+                      </option>
+                    ))
+                  )}
+                </select>
+                {fieldErrors.propertyId && (
+                  <div className="form-error">
+                    <AlertCircle size={13} />
+                    <span>{fieldErrors.propertyId}</span>
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* Rappel visuel du Lot parent ou raccourci de création si le Lot sélectionné n'a aucun bien vacant */}
+            {selectedPropertyObj && (
+              <div style={{
+                padding: '12px 16px',
+                borderRadius: '10px',
+                backgroundColor: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '10px',
+                fontSize: '0.82rem',
+                color: '#166534'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Building2 size={16} />
+                  <span>
+                    Bien sélectionné : <strong>{selectedPropertyObj.name}</strong> ({TYPE_LABELS[selectedPropertyObj.type] || selectedPropertyObj.type})
+                    {selectedPropertyObj.parent?.name
+                      ? ` • Rattaché au Lot « ${selectedPropertyObj.parent.name} »`
+                      : ' • Bien individuel indépendant'}
+                  </span>
+                </div>
+                {selectedPropertyObj.rentAmount && (
+                  <span style={{ fontWeight: 700 }}>
+                    Loyer catalogue : {Number(selectedPropertyObj.rentAmount).toLocaleString('fr-FR')} FCFA/mois
+                  </span>
+                )}
+              </div>
+            )}
+
+            {filteredProperties.length === 0 && (
+              <div style={{
+                padding: '14px 16px',
+                borderRadius: '10px',
+                backgroundColor: '#fffbeb',
+                border: '1px solid #fde68a',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '12px',
+                fontSize: '0.82rem',
+                color: '#92400e'
+              }}>
+                <span>
+                  {selectedLotId !== 'all' && selectedLotId !== '__independent__'
+                    ? '⚠️ Aucun bien locatif vacant n’est disponible dans ce lot actuellement.'
+                    : '⚠️ Aucun bien locatif vacant disponible. Tous vos biens sont occupés ou aucun bien n’a encore été créé.'}
+                </span>
+                <Link
+                  href={
+                    selectedLotId !== 'all' && selectedLotId !== '__independent__'
+                      ? `/properties/create?parentId=${selectedLotId}`
+                      : '/properties/create'
+                  }
+                  className="btn btn-primary"
+                  style={{ fontSize: '0.78rem', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Plus size={14} />
+                  {selectedLotId !== 'all' && selectedLotId !== '__independent__'
+                    ? 'Ajouter un bien dans ce lot'
+                    : 'Créer un bien locatif'}
+                </Link>
+              </div>
+            )}
 
             <div className="form-group">
               <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
