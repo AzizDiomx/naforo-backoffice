@@ -1,6 +1,6 @@
 'use client';
 
-import { Menu, Bell, User, AlertCircle, ChevronDown, LogOut, Clock } from 'lucide-react';
+import { Menu, Bell, User, AlertCircle, ChevronDown, LogOut, Clock, Compass } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { api } from '@/lib/api';
 import Link from 'next/link';
@@ -220,12 +220,45 @@ export default function Header({ onMenuToggle }: HeaderProps) {
         </div>
 
         {/* Profil & Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Bouton Visite Guidée */}
+          <button 
+            onClick={() => window.dispatchEvent(new CustomEvent('start-product-tour'))}
+            title="Démarrer la visite guidée"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: 'rgba(1, 62, 55, 0.05)',
+              color: '#013E37',
+              border: '1px solid rgba(1, 62, 55, 0.15)',
+              borderRadius: '20px',
+              padding: '6px 12px',
+              fontSize: '0.8rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(1, 62, 55, 0.1)';
+              e.currentTarget.style.borderColor = 'rgba(1, 62, 55, 0.3)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(1, 62, 55, 0.05)';
+              e.currentTarget.style.borderColor = 'rgba(1, 62, 55, 0.15)';
+            }}
+          >
+            <Compass size={15} style={{ color: '#013E37' }} />
+            <span style={{ display: 'none' }} className="tour-label">Visite guidée</span>
+          </button>
+
           {/* Composant Notifications Temps Réel */}
-          <NotificationBell />
+          <div data-tour="notification-bell">
+            <NotificationBell />
+          </div>
 
           {/* Fiche Profil & Dropdown */}
-          <div ref={dropdownRef} style={{ position: 'relative' }}>
+          <div ref={dropdownRef} style={{ position: 'relative' }} data-tour="header-profile">
             <button 
               onClick={() => setShowDropdown(!showDropdown)}
               className="profile-btn" 
@@ -233,7 +266,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
                 display: 'flex', 
                 alignItems: 'center', 
                 gap: '12px', 
-                marginLeft: '8px',
+                marginLeft: '4px',
                 padding: '6px 12px 6px 6px', 
                 cursor: 'pointer', 
                 borderRadius: '30px',
@@ -288,6 +321,17 @@ export default function Header({ onMenuToggle }: HeaderProps) {
                   <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text)' }}>{userName}</span>
                   <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{userEmail}</span>
                 </div>
+
+                <button 
+                  onClick={() => {
+                    setShowDropdown(false);
+                    window.dispatchEvent(new CustomEvent('start-product-tour'));
+                  }} 
+                  className="dropdown-item" 
+                  style={{ outline: 'none' }}
+                >
+                  <Compass size={16} style={{ color: '#013E37' }} /> Visite guidée
+                </button>
                 
                 <Link href="/profile" className="dropdown-item" onClick={() => setShowDropdown(false)}>
                   <User size={16} /> Paramètre profil
@@ -340,6 +384,9 @@ export default function Header({ onMenuToggle }: HeaderProps) {
         @media (min-width: 640px) {
           .user-details {
             display: flex !important;
+          }
+          .tour-label {
+            display: inline !important;
           }
         }
       `}</style>

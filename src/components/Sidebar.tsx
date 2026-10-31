@@ -182,7 +182,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       </div>
 
       {/* Navigation Links */}
-      <nav style={{ flex: 1, padding: '24px 16px', display: 'flex', flexDirection: 'column', gap: '24px', overflowY: 'auto' }}>
+      <nav data-tour="sidebar-nav" style={{ flex: 1, padding: '24px 16px', display: 'flex', flexDirection: 'column', gap: '24px', overflowY: 'auto' }}>
         {groups.map(group => (
           <div key={group} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <span style={{ 
@@ -199,11 +199,19 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             {menuItems.filter(i => i.group === group).map(item => {
               const isActive = pathname.startsWith(item.href);
               const Icon = item.icon;
+              const tourAttr = 
+                item.href === '/properties' ? 'menu-properties' :
+                item.href === '/contracts' ? 'menu-contracts' :
+                item.href === '/tenants' ? 'menu-tenants' :
+                item.href === '/payments' ? 'menu-payments' :
+                item.href === '/subscription' ? 'menu-subscription' : undefined;
+
               return (
                 <Link 
                   key={item.href}
                   href={item.href}
                   onClick={onClose}
+                  data-tour={tourAttr}
                   style={{
                     display: 'flex',
                     alignItems: 'center',

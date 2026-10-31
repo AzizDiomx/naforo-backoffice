@@ -7,6 +7,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import { useSubscriptionFeature } from '@/lib/useSubscriptionFeature';
 import SubscriptionTrialModal from './SubscriptionTrialModal';
+import ProductTour from './ProductTour';
 import { isTokenExpiringSoon, refreshAccessToken, handleSessionExpired } from '@/lib/api';
 
 interface LayoutProps {
@@ -87,6 +88,9 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="app-container">
+      {/* Visite Guidée Interactive (Product Tour) */}
+      <ProductTour />
+
       {/* Modal d'alerte élégante fin d'essai Starter */}
       <SubscriptionTrialModal
         isOpen={showTrialModal}
