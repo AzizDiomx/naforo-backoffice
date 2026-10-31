@@ -58,6 +58,7 @@ export default function ContractDetailPage() {
   const [otpInput, setOtpInput] = useState('');
   const [sendingOtp, setSendingOtp] = useState(false);
   const [signingOtp, setSigningOtp] = useState(false);
+  const [bypassingSignature, setBypassingSignature] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [demoOtpCode, setDemoOtpCode] = useState<string | null>(null);
   const [copiedHash, setCopiedHash] = useState(false);
@@ -225,6 +226,24 @@ export default function ContractDetailPage() {
     setTimeout(() => setCopiedHash(false), 2000);
   };
 
+  const handleBypassSignature = async () => {
+    setBypassingSignature(true);
+    try {
+      const res = await api.post(`/contracts/${id}/bypass-signature`, {
+        reason: 'Validation administrative (Locataire non digitalisé / Signature physique)',
+      });
+      showFormSuccess(res.message || 'Validation administrative effectuée avec succès (Pass OTP).');
+      setShowOtpModal(false);
+      setOtpInput('');
+      setDemoOtpCode(null);
+      loadData();
+    } catch (err) {
+      handleFormError(err, 'Erreur lors de la validation administrative du contrat.');
+    } finally {
+      setBypassingSignature(false);
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -387,7 +406,9 @@ export default function ContractDetailPage() {
               }}
             >
               {contract.signatureStatus === 'signed' || !!contract.signedAt
-                ? 'Signé Électroniquement'
+                ? contract.signatureOtp === 'PASS-ADMIN'
+                  ? 'Validé par Admin (Pass OTP)'
+                  : 'Signé Électroniquement'
                 : contract.signatureStatus === 'otp_sent'
                 ? 'Code OTP envoyé'
                 : 'En attente de signature'}
@@ -404,8 +425,14 @@ export default function ContractDetailPage() {
                 </div>
 
                 <div>
-                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem' }}>RÉFÉRENCE VALIDATION OTP</span>
-                  <strong style={{ color: '#166534' }}>{contract.signatureOtp ? `OTP-${contract.signatureOtp}` : 'CERT-OTP-VALIDE'}</strong>
+                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.725rem' }}>MODE DE VALIDATION</span>
+                  <strong style={{ color: '#166534' }}>
+                    {contract.signatureOtp === 'PASS-ADMIN'
+                      ? 'PASS-ADMIN (Dispense OTP / Signature physique)'
+                      : contract.signatureOtp
+                      ? `OTP-${contract.signatureOtp}`
+                      : 'CERT-OTP-VALIDE'}
+                  </strong>
                 </div>
 
                 <div>
@@ -508,6 +535,25 @@ export default function ContractDetailPage() {
                 >
                   <Download size={14} /> Consulter le projet de bail
                 </button>
+                <button
+                  type="button"
+                  onClick={handleBypassSignature}
+                  disabled={bypassingSignature}
+                  className="btn btn-secondary"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    borderColor: '#16a34a',
+                    color: '#166534',
+                    backgroundColor: '#f0fdf4',
+                    fontWeight: 700,
+                  }}
+                  title="Valider directement sans code OTP si le locataire n'est pas à l'aise avec l'outil digital ou signe sur papier"
+                >
+                  <CheckCircle2 size={15} />
+                  {bypassingSignature ? 'Validation...' : 'Pass / Valider sans OTP (Admin)'}
+                </button>
               </div>
             </div>
           )}
@@ -515,11 +561,16 @@ export default function ContractDetailPage() {
           {/* Unsigned State */}
           {(!contract.signatureStatus || contract.signatureStatus === 'unsigned') && !contract.signedAt && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
-              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                Faites signer le bail électroniquement par le locataire à distance via un code SMS sécurisé.
-              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  Faites signer le bail électroniquement par le locataire à distance via un code SMS sécurisé, ou validez-le directement.
+                </span>
+                <span style={{ fontSize: '0.73rem', color: '#64748b' }}>
+                  💡 Si le locataire n&apos;est pas à l&apos;aise avec les outils digitaux (signature papier), utilisez le bouton <strong>Pass (Admin)</strong> pour ne pas bloquer le dossier.
+                </span>
+              </div>
 
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={handleDownloadPdf}
@@ -528,6 +579,25 @@ export default function ContractDetailPage() {
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                 >
                   <Download size={14} /> Prévisualiser le bail PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBypassSignature}
+                  disabled={bypassingSignature}
+                  className="btn btn-secondary"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    borderColor: '#16a34a',
+                    color: '#166534',
+                    backgroundColor: '#f0fdf4',
+                    fontWeight: 700,
+                  }}
+                  title="Contourner l'étape OTP si le locataire a signé physiquement ou n'utilise pas les outils numériques"
+                >
+                  <CheckCircle2 size={15} />
+                  {bypassingSignature ? 'Validation...' : 'Pass / Valider sans OTP (Admin)'}
                 </button>
                 <button
                   type="button"
@@ -875,18 +945,35 @@ export default function ContractDetailPage() {
                   />
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
-                  <button type="button" onClick={() => setShowOtpModal(false)} className="btn btn-secondary">
-                    Annuler
-                  </button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginTop: '6px' }}>
                   <button
-                    type="submit"
-                    className="btn btn-primary"
-                    style={{ backgroundColor: '#16a34a' }}
-                    disabled={signingOtp}
+                    type="button"
+                    onClick={handleBypassSignature}
+                    disabled={bypassingSignature}
+                    className="btn btn-secondary"
+                    style={{
+                      fontSize: '0.78rem',
+                      borderColor: '#16a34a',
+                      color: '#166534',
+                      backgroundColor: '#f0fdf4',
+                      fontWeight: 700,
+                    }}
                   >
-                    {signingOtp ? 'Vérification...' : 'Confirmer la signature'}
+                    {bypassingSignature ? 'Validation...' : 'Pass Admin (Valider sans OTP)'}
                   </button>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button type="button" onClick={() => setShowOtpModal(false)} className="btn btn-secondary">
+                      Annuler
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      style={{ backgroundColor: '#16a34a' }}
+                      disabled={signingOtp}
+                    >
+                      {signingOtp ? 'Vérification...' : 'Confirmer la signature'}
+                    </button>
+                  </div>
                 </div>
               </form>
             </div>
