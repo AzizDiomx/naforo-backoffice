@@ -23,11 +23,21 @@ import {
   DollarSign,
   TrendingUp,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Upload,
+  ExternalLink
 } from 'lucide-react';
 
 import ConfirmModal from '@/components/ConfirmModal';
 import { handleFormError, showFormSuccess } from '@/lib/form-errors';
+
+const ID_TYPE_LABELS: Record<string, string> = {
+  cni: 'Carte Nationale d\'Identité (CNI)',
+  passport: 'Passeport',
+  attestation: 'Attestation d\'Identité (ONECI)',
+  consular_card: 'Carte Consulaire',
+  residence_permit: 'Titre de Séjour / Carte de Résident',
+};
 
 export default function TenantDetailPage() {
   const { id } = useParams();
@@ -35,8 +45,26 @@ export default function TenantDetailPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [scoringLoading, setScoringLoading] = useState(false);
+  const [uploadingIdDoc, setUploadingIdDoc] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleUploadIdDocDirect = async (file: File) => {
+    setUploadingIdDoc(true);
+    try {
+      const formData = new FormData();
+      formData.append('idDocument', file);
+      if (tenant?.nationalId) formData.append('nationalId', tenant.nationalId);
+      if (tenant?.nationalIdType) formData.append('nationalIdType', tenant.nationalIdType);
+      const updated = await api.upload(`/tenant-profiles/${id}/id-document`, formData);
+      setTenant((prev: any) => ({ ...prev, ...updated }));
+      showFormSuccess('Pièce d\'identité téléversée et archivée avec succès !');
+    } catch (err) {
+      handleFormError(err, 'Erreur lors du téléversement de la pièce d\'identité.');
+    } finally {
+      setUploadingIdDoc(false);
+    }
+  };
 
   const handleRecalculateRisk = async () => {
     setScoringLoading(true);
@@ -245,14 +273,103 @@ export default function TenantDetailPage() {
                 </div>
               </div>
 
-              {tenant.nationalId && (
-                <div style={{ marginTop: '10px', borderTop: '1px solid var(--border)', paddingTop: '14px', fontSize: '0.875rem' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600', display: 'block', marginBottom: '4px' }}>
-                    JUSTIFICATIF D'IDENTITÉ (CNI / PASSEPORT)
+              {/* Bloc Justificatif d'Identité (CNI / Passeport + Pièce numérique) */}
+              <div style={{
+                marginTop: '10px',
+                borderTop: '1px solid var(--border)',
+                paddingTop: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <FileText size={14} style={{ color: 'var(--primary)' }} />
+                    JUSTIFICATIF D&apos;IDENTITÉ ({ID_TYPE_LABELS[tenant.nationalIdType || 'cni'] || 'CNI / Passeport'})
                   </span>
-                  <span>Numéro de pièce : <strong>{tenant.nationalId}</strong></span>
+                  {tenant.nationalIdDocUrl ? (
+                    <span className="badge badge-success" style={{ fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <CheckCircle2 size={12} /> Copie numérique archivée
+                    </span>
+                  ) : (
+                    <span className="badge badge-warning" style={{ fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <AlertCircle size={12} /> Aucune copie numérique jointe
+                    </span>
+                  )}
                 </div>
-              )}
+
+                <div style={{
+                  padding: '14px 16px',
+                  borderRadius: '10px',
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid var(--border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '12px'
+                }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '0.85rem', color: '#0f172a' }}>
+                      Numéro de pièce : <strong>{tenant.nationalId || 'Non renseigné'}</strong>
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      Type : {ID_TYPE_LABELS[tenant.nationalIdType || 'cni'] || 'CNI / Passeport'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    {tenant.nationalIdDocUrl && (
+                      <a
+                        href={api.getFileUrl(tenant.nationalIdDocUrl)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-primary"
+                        style={{
+                          padding: '7px 14px',
+                          fontSize: '0.78rem',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          textDecoration: 'none'
+                        }}
+                      >
+                        <ExternalLink size={14} /> Voir / Télécharger la pièce
+                      </a>
+                    )}
+
+                    <label
+                      className="btn btn-secondary"
+                      style={{
+                        padding: '7px 14px',
+                        fontSize: '0.78rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        cursor: uploadingIdDoc ? 'not-allowed' : 'pointer',
+                        margin: 0
+                      }}
+                    >
+                      <Upload size={14} />
+                      {uploadingIdDoc
+                        ? 'Téléversement...'
+                        : tenant.nationalIdDocUrl
+                        ? 'Remplacer la pièce'
+                        : 'Téléverser la pièce (CNI / Passeport)'}
+                      <input
+                        type="file"
+                        accept=".pdf,image/jpeg,image/png,image/webp"
+                        style={{ display: 'none' }}
+                        disabled={uploadingIdDoc}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleUploadIdDocDirect(f);
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
 
               {tenant.notes && (
                 <div style={{ marginTop: '10px', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>

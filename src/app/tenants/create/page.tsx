@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { api } from '@/lib/api';
 import { handleFormError, showFormSuccess } from '@/lib/form-errors';
-import { ArrowLeft, AlertCircle, User, Phone, Mail, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, AlertCircle, User, Phone, Mail, ShieldAlert, Upload, FileText, CheckCircle2, X } from 'lucide-react';
 import Link from 'next/link';
 
 export default function CreateTenantPage() {
@@ -12,7 +12,9 @@ export default function CreateTenantPage() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [nationalIdType, setNationalIdType] = useState('cni');
   const [nationalId, setNationalId] = useState('');
+  const [idDocumentFile, setIdDocumentFile] = useState<File | null>(null);
   const [profession, setProfession] = useState('');
   const [employer, setEmployer] = useState('');
   const [monthlyIncome, setMonthlyIncome] = useState<number | ''>('');
@@ -111,6 +113,7 @@ export default function CreateTenantPage() {
       email: email.trim() || undefined,
       phone: phone.trim(),
       password: password || undefined,
+      nationalIdType: nationalIdType || 'cni',
       nationalId: nationalId.trim() || undefined,
       profession: profession.trim() || undefined,
       employer: employer.trim() || undefined,
@@ -121,8 +124,15 @@ export default function CreateTenantPage() {
     };
 
     try {
-      await api.post('/tenant-profiles', payload);
-      showFormSuccess('Fiche locataire créée avec succès !');
+      const created = await api.post('/tenant-profiles', payload);
+      if (idDocumentFile && created?.id) {
+        const formData = new FormData();
+        formData.append('idDocument', idDocumentFile);
+        if (nationalId.trim()) formData.append('nationalId', nationalId.trim());
+        if (nationalIdType) formData.append('nationalIdType', nationalIdType);
+        await api.upload(`/tenant-profiles/${created.id}/id-document`, formData);
+      }
+      showFormSuccess('Fiche locataire et justificatif d\'identité enregistrés avec succès !');
       setTimeout(() => {
         window.location.href = '/tenants';
       }, 600);
@@ -303,25 +313,143 @@ export default function CreateTenantPage() {
               </span>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">NUMÉRO DE PIÈCE D'IDENTITÉ (CNI / PASSEPORT)</label>
-              <input
-                type="text"
-                className={`form-control ${fieldErrors.nationalId ? 'is-invalid' : ''}`}
-                placeholder="Ex: C010293848"
-                value={nationalId}
-                onChange={(e) => {
-                  setNationalId(e.target.value);
-                  clearFieldError('nationalId');
-                }}
-                disabled={quotaReached}
-              />
-              {fieldErrors.nationalId && (
-                <div className="form-error">
-                  <AlertCircle size={13} />
-                  <span>{fieldErrors.nationalId}</span>
+            {/* Section Pièce d'Identité (Type, Numéro & Téléversement du justificatif) */}
+            <div style={{
+              padding: '18px',
+              borderRadius: '12px',
+              backgroundColor: '#f8fafc',
+              border: '1px solid var(--border)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FileText size={16} style={{ color: 'var(--primary)' }} />
+                  Pièce d'Identité & Justificatif Officiel (CNI / Passeport)
+                </span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  Archivé automatiquement dans le dossier locataire et la GED
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">TYPE DE PIÈCE D'IDENTITÉ</label>
+                  <select
+                    className="form-control"
+                    value={nationalIdType}
+                    onChange={(e) => setNationalIdType(e.target.value)}
+                    disabled={quotaReached}
+                  >
+                    <option value="cni">Carte Nationale d'Identité (CNI)</option>
+                    <option value="passport">Passeport</option>
+                    <option value="attestation">Attestation d'Identité (ONECI)</option>
+                    <option value="consular_card">Carte Consulaire</option>
+                    <option value="residence_permit">Titre de Séjour / Carte de Résident</option>
+                  </select>
                 </div>
-              )}
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">NUMÉRO DE PIÈCE D'IDENTITÉ (CNI / PASSEPORT)</label>
+                  <input
+                    type="text"
+                    className={`form-control ${fieldErrors.nationalId ? 'is-invalid' : ''}`}
+                    placeholder="Ex: CI010293848"
+                    value={nationalId}
+                    onChange={(e) => {
+                      setNationalId(e.target.value);
+                      clearFieldError('nationalId');
+                    }}
+                    disabled={quotaReached}
+                  />
+                  {fieldErrors.nationalId && (
+                    <div className="form-error">
+                      <AlertCircle size={13} />
+                      <span>{fieldErrors.nationalId}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">TÉLÉVERSER LA COPIE DE LA PIÈCE (PDF, JPG, PNG, WEBP — MAX 10 MO)</label>
+                {!idDocumentFile ? (
+                  <label
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '20px',
+                      border: '2px dashed #cbd5e1',
+                      borderRadius: '10px',
+                      backgroundColor: '#ffffff',
+                      cursor: quotaReached ? 'not-allowed' : 'pointer',
+                      transition: 'border-color 0.2s ease',
+                      gap: '6px'
+                    }}
+                  >
+                    <Upload size={22} style={{ color: 'var(--primary)' }} />
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b' }}>
+                      Cliquez pour sélectionner le scan ou la photo de la pièce d'identité
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      Formats acceptés : PDF, JPEG, PNG, WEBP (Recto/Verso ou page principale)
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pdf,image/jpeg,image/png,image/webp"
+                      style={{ display: 'none' }}
+                      disabled={quotaReached}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0] || null;
+                        if (f) setIdDocumentFile(f);
+                      }}
+                    />
+                  </label>
+                ) : (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 16px',
+                    backgroundColor: '#f0fdf4',
+                    border: '1px solid #bbf7d0',
+                    borderRadius: '10px',
+                    gap: '12px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                      <CheckCircle2 size={18} style={{ color: '#16a34a', flexShrink: 0 }} />
+                      <div style={{ overflow: 'hidden' }}>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#166534', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                          {idDocumentFile.name}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: '#15803d' }}>
+                          {(idDocumentFile.size / 1024).toFixed(1)} Ko • Prêt à être téléversé et archivé
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIdDocumentFile(null)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#dc2626',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '0.78rem',
+                        fontWeight: 600
+                      }}
+                    >
+                      <X size={15} /> Retirer
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <h3 style={{ fontSize: '1.1rem', fontWeight: '600', borderBottom: '1px solid var(--border)', paddingBottom: '10px', marginTop: '10px' }}>Situation Professionnelle</h3>
