@@ -40,37 +40,144 @@ export class ApiError extends Error {
   }
 }
 
-async function refreshToken(): Promise<string | null> {
-  const refresh = localStorage.getItem('refreshToken');
-  if (!refresh) return null;
+const PUBLIC_AUTH_ENDPOINTS = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/verify-email',
+  '/auth/refresh-token',
+];
 
+function isPublicAuthEndpoint(endpoint: string): boolean {
+  return PUBLIC_AUTH_ENDPOINTS.some((pub) => endpoint.startsWith(pub));
+}
+
+function isPublicAuthPage(): boolean {
+  if (typeof window === 'undefined') return false;
+  const path = window.location.pathname;
+  return (
+    path.startsWith('/login') ||
+    path.startsWith('/register') ||
+    path.startsWith('/forgot-password') ||
+    path.startsWith('/reset-password') ||
+    path.startsWith('/verify-email')
+  );
+}
+
+/**
+ * Décode la charge utile (payload) d'un JWT sans dépendance externe
+ * et vérifie s'il est expiré ou expire dans moins de `bufferSeconds` secondes.
+ */
+export function isTokenExpiringSoon(token: string | null, bufferSeconds = 60): boolean {
+  if (!token) return true;
   try {
-    const res = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken: refresh }),
-    });
-
-    if (!res.ok) throw new Error();
-    const json = await res.json();
-    if (json.success && json.data.accessToken) {
-      localStorage.setItem('accessToken', json.data.accessToken);
-      localStorage.setItem('refreshToken', json.data.refreshToken);
-      return json.data.accessToken;
-    }
-    return null;
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const payload = JSON.parse(jsonPayload);
+    if (!payload.exp) return false;
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    return payload.exp - nowSeconds <= bufferSeconds;
   } catch {
-    // Session expirée -> Déconnexion
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
-    window.location.href = '/login';
-    return null;
+    return true;
   }
 }
 
+let isRedirectingToLogin = false;
+
+export function handleSessionExpired(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('user');
+
+  if (isPublicAuthPage() || isRedirectingToLogin) return;
+  isRedirectingToLogin = true;
+
+  const currentPath = window.location.pathname + window.location.search;
+  const redirectParam =
+    currentPath && currentPath !== '/' && !currentPath.startsWith('/login')
+      ? `&redirect=${encodeURIComponent(currentPath)}`
+      : '';
+  window.location.href = `/login?expired=1${redirectParam}`;
+}
+
+// Mutex single-flight : garantit qu'une seule requête /auth/refresh-token est envoyée à la fois
+// même si 5 composants déclenchent un rafraîchissement en parallèle.
+let refreshPromise: Promise<string | null> | null = null;
+
+export async function refreshAccessToken(): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = (async () => {
+    const refresh = localStorage.getItem('refreshToken');
+    if (!refresh) {
+      handleSessionExpired();
+      return null;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ refreshToken: refresh }),
+      });
+
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          handleSessionExpired();
+        }
+        return null;
+      }
+
+      const json = await res.json();
+      if (json.success && json.data?.accessToken) {
+        localStorage.setItem('accessToken', json.data.accessToken);
+        if (json.data.refreshToken) {
+          localStorage.setItem('refreshToken', json.data.refreshToken);
+        }
+        return json.data.accessToken as string;
+      }
+
+      handleSessionExpired();
+      return null;
+    } catch {
+      // En cas de coupure réseau temporaire (offline), ne pas déconnecter brutalement l'utilisateur
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
 export async function fetchApi<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  let token = localStorage.getItem('accessToken');
+  let token = isBrowser ? localStorage.getItem('accessToken') : null;
+  const isPublic = isPublicAuthEndpoint(endpoint);
+
+  // 0. Rafraîchissement proactif si le jeton d'accès est expiré ou expire dans moins de 60s
+  if (isBrowser && !isPublic && endpoint !== '/auth/logout') {
+    const hasRefresh = Boolean(localStorage.getItem('refreshToken'));
+    if ((!token && hasRefresh) || (token && isTokenExpiringSoon(token, 60) && hasRefresh)) {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        token = refreshed;
+      }
+    }
+  }
 
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
@@ -86,12 +193,16 @@ export async function fetchApi<T = any>(endpoint: string, options: RequestInit =
 
   let response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
-  // 1. Gestion du rafraîchissement du token expiré (401)
-  if (response.status === 401 && endpoint !== '/auth/login' && endpoint !== '/auth/register') {
-    const newToken = await refreshToken();
+  // 1. Gestion réactive du rafraîchissement du token expiré (401)
+  if (response.status === 401 && !isPublic && endpoint !== '/auth/logout') {
+    const newToken = await refreshAccessToken();
     if (newToken) {
       headers.set('Authorization', `Bearer ${newToken}`);
-      response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+      response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers,
+        credentials: 'include',
+      });
     }
   }
 
@@ -147,23 +258,46 @@ export const api = {
     }),
   delete: <T = any>(endpoint: string, options?: RequestInit) => fetchApi<T>(endpoint, { method: 'DELETE', ...options }),
   
-  // Téléchargement de fichiers (Multipart Form Data)
+  // Téléchargement de fichiers (Multipart Form Data) avec rafraîchissement automatique du token
   upload: async <T = any>(endpoint: string, formData: FormData): Promise<T> => {
-    const token = localStorage.getItem('accessToken');
+    let token = isBrowser ? localStorage.getItem('accessToken') : null;
+    const hasRefresh = isBrowser && Boolean(localStorage.getItem('refreshToken'));
+
+    if (isBrowser && ((!token && hasRefresh) || (token && isTokenExpiringSoon(token, 60) && hasRefresh))) {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        token = refreshed;
+      }
+    }
+
     const headers = new Headers();
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
     }
     
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    let response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
       headers,
+      credentials: 'include',
       body: formData,
     });
+
+    if (response.status === 401) {
+      const newToken = await refreshAccessToken();
+      if (newToken) {
+        headers.set('Authorization', `Bearer ${newToken}`);
+        response = await fetch(`${API_BASE_URL}${endpoint}`, {
+          method: 'POST',
+          headers,
+          credentials: 'include',
+          body: formData,
+        });
+      }
+    }
     
     if (!response.ok) {
       const errJson = await response.json().catch(() => ({}));
-      throw new ApiError(errJson.message || 'Échec du téléversement', response.status);
+      throw new ApiError(errJson.message || 'Échec du téléversement', response.status, errJson.errors);
     }
     const json = await response.json();
     return json.data as T;

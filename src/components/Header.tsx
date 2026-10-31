@@ -26,17 +26,20 @@ export default function Header({ onMenuToggle }: HeaderProps) {
   useEffect(() => {
     // Récupérer l'utilisateur courant
     const userStr = localStorage.getItem('user');
+    let parsedRole = '';
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
         setUserName(`${user.firstName} ${user.lastName}`);
         setUserRole(user.role.toUpperCase());
         setUserEmail(user.email);
+        parsedRole = user.role || '';
       } catch {}
     }
 
-    // Récupérer le statut d'abonnement pour la bannière d'alerte
+    // Récupérer le statut d'abonnement pour la bannière d'alerte (uniquement pour les propriétaires / gérants)
     const fetchSubStatus = () => {
+      if (parsedRole === 'super_admin') return;
       api.get('/dashboard/owner')
         .then(res => {
           if (res.subscription) {

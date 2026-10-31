@@ -85,8 +85,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     };
   }, []);
 
-  const handleLogout = () => {
-    api.post('/auth/logout').catch(() => {});
+  const handleLogout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch {}
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');

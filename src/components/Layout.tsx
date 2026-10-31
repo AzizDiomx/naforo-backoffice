@@ -7,6 +7,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import { useSubscriptionFeature } from '@/lib/useSubscriptionFeature';
 import SubscriptionTrialModal from './SubscriptionTrialModal';
+import { isTokenExpiringSoon, refreshAccessToken, handleSessionExpired } from '@/lib/api';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,17 +21,46 @@ export default function Layout({ children }: LayoutProps) {
 
   useEffect(() => {
     setMounted(true);
-    // Vérification de l'authentification client-side
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      window.location.href = '/login';
-    }
+
+    const verifyAndKeepSessionAlive = async () => {
+      const accessToken = localStorage.getItem('accessToken');
+      const refreshToken = localStorage.getItem('refreshToken');
+
+      if (!accessToken && !refreshToken) {
+        handleSessionExpired();
+        return;
+      }
+
+      if (!accessToken || isTokenExpiringSoon(accessToken, 120)) {
+        await refreshAccessToken();
+      }
+    };
+
+    verifyAndKeepSessionAlive();
+
+    // Rafraîchissement silencieux périodique (toutes les 4 minutes) et au retour sur l'onglet
+    const intervalId = window.setInterval(verifyAndKeepSessionAlive, 4 * 60 * 1000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        verifyAndKeepSessionAlive();
+      }
+    };
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'accessToken' && !e.newValue && !localStorage.getItem('refreshToken')) {
+        window.location.href = '/login';
+      }
+    };
 
     const handleOpenModal = () => setShowTrialModal(true);
     window.addEventListener('show-starter-trial-modal', handleOpenModal);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('storage', handleStorageChange);
 
     return () => {
+      window.clearInterval(intervalId);
       window.removeEventListener('show-starter-trial-modal', handleOpenModal);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
 

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
-import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
@@ -11,6 +11,21 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [redirectTo, setRedirectTo] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('expired') === '1') {
+        setSessionExpired(true);
+      }
+      const redirectParam = params.get('redirect');
+      if (redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//') && !redirectParam.startsWith('/login')) {
+        setRedirectTo(redirectParam);
+      }
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +40,9 @@ export default function LoginPage() {
 
       toast.success('Connexion réussie !');
 
-      if (data.user.role === 'super_admin') {
+      if (redirectTo) {
+        window.location.href = redirectTo;
+      } else if (data.user.role === 'super_admin') {
         window.location.href = '/admin/dashboard';
       } else {
         window.location.href = '/dashboard';
@@ -61,6 +78,27 @@ export default function LoginPage() {
               Connectez-vous pour gérer votre patrimoine.
             </p>
           </div>
+
+          {sessionExpired && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '10px',
+              backgroundColor: '#fffbeb',
+              border: '1px solid #fde68a',
+              color: '#92400e',
+              padding: '12px 14px',
+              borderRadius: '12px',
+              fontSize: '0.85rem',
+              lineHeight: '1.4',
+              marginBottom: '20px',
+            }}>
+              <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '1px', color: '#d97706' }} />
+              <span>
+                <strong>Session expirée :</strong> Par mesure de sécurité, veuillez vous reconnecter pour poursuivre votre session.
+              </span>
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
             <button type="button" className="sso-btn" onClick={() => toast("Prochainement", { icon: "⏳" })}>
