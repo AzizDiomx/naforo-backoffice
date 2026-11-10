@@ -123,6 +123,8 @@ export default function SubscriptionPage() {
     advanced_stats: 'Statistiques avancées par lot & bien',
     white_label: 'Marque Blanche Agence (Logo, couleurs, cachet)',
     e_signature: 'Signature électronique OTP des baux',
+    digital_inspections: 'États des Lieux numériques d\'entrée & sortie (Photos & signatures)',
+    whatsapp_reminders: 'Relances de loyers par WhatsApp direct & modèles personnalisés',
     agency_mandates: 'Mandats de gérance & multi-bailleurs',
     dgi_accounting_export: 'Conformité fiscale & bilans DGI',
     api_webhooks: 'Accès API & intégrations webhooks',

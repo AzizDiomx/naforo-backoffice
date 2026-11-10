@@ -166,6 +166,20 @@ const ALL_FEATURE_OPTIONS: PlanFeatureOption[] = [
     nature: 'software_enforced', 
     category: 'compliance' 
   },
+  { 
+    code: 'digital_inspections', 
+    label: 'États des Lieux numériques (Entrée / Sortie)', 
+    hint: 'Déverrouille le module /inspections (constat contradictoire, photos horodatées, compteurs CIE/SODECI, signatures tactiles)',
+    nature: 'software_enforced', 
+    category: 'compliance' 
+  },
+  { 
+    code: 'whatsapp_reminders', 
+    label: 'Relances WhatsApp directes & automatisées', 
+    hint: 'Déverrouille le module /whatsapp et les boutons d\'envoi direct WhatsApp pour factures et impayés',
+    nature: 'software_enforced', 
+    category: 'automation' 
+  },
 
   // --- ENGAGEMENTS COMMERCIAUX & SERVICE / SLA ---
   { 
