@@ -17,6 +17,8 @@ import {
   LayoutDashboard,
   ClipboardCheck,
   MessageCircle,
+  ShieldCheck,
+  Landmark,
 } from 'lucide-react';
 
 export interface TourStep {
@@ -61,6 +63,28 @@ const TOUR_STEPS: TourStep[] = [
     content:
       'Ajoutez vos immeubles, résidences, villas et appartements. Vous pouvez découper un immeuble en plusieurs lots indépendants avec leurs propres loyers, surfaces et compteurs.',
     tip: 'Commencez par ajouter votre premier bien pour pouvoir y rattacher vos baux et locataires.',
+    placement: 'right',
+  },
+  {
+    id: 'managers',
+    target: '[data-tour="menu-managers"]',
+    category: 'Équipe & Délégation',
+    icon: ShieldCheck,
+    title: 'Gérants & Équipe Immobilière',
+    content:
+      'Déléguez et cloisonnez la gestion de vos lots et immeubles par collaborateur dédié. Suivez les encaissements, loyers collectés et indicateurs de performance de chaque gestionnaire.',
+    tip: 'Idéal pour les agences et cabinets de gestion immobilière (inclus dans la formule Expert).',
+    placement: 'right',
+  },
+  {
+    id: 'landlords',
+    target: '[data-tour="menu-landlords"]',
+    category: 'Bailleurs & Mandats',
+    icon: Landmark,
+    title: 'Bailleurs & Comptes-Rendus de Gestion (CRG)',
+    content:
+      'Administrez vos propriétaires mandants, appliquez vos taux d’honoraires de gestion (ex: 8% à 10%) et générez automatiquement des CRG officiels certifiés à chaque fin de mois.',
+    tip: 'Un clic génère le décompte des loyers perçus et le solde net à reverser au bailleur.',
     placement: 'right',
   },
   {

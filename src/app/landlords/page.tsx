@@ -1198,7 +1198,7 @@ export default function LandlordsPage() {
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       required
-                      placeholder="+225 07..."
+                      placeholder="+225 07 00 00 00 00"
                     />
                   </div>
 

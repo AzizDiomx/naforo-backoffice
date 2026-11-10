@@ -155,12 +155,13 @@ export default function ManagersPage() {
     }
   };
 
-  // Quota calculation
+  // Quota & Droits forfaitaires (Aligné avec plan-policy.ts : multi_users réservé au Forfait Expert)
   const planCode = (subscription?.planCode || '').toLowerCase();
   const isExpertPlan = planCode.includes('expert') || planCode.includes('agency');
-  const maxStaff = planCode.includes('pro') ? 2 : (isExpertPlan ? 999 : 1);
+  const hasMultiUsers = isExpertPlan || (Array.isArray(subscription?.features) && subscription.features.includes('multi_users'));
+  const maxStaff = hasMultiUsers ? 999 : 0;
   const staffCount = managers.length;
-  const isQuotaReached = !isExpertPlan && staffCount >= maxStaff;
+  const isQuotaReached = !hasMultiUsers;
 
   // Filtered Managers
   const filteredManagers = useMemo(() => {
@@ -298,7 +299,7 @@ export default function ManagersPage() {
           <button
             onClick={() => {
               if (isQuotaReached) {
-                toast.error('Limite de collaborateurs atteinte. Passez à la formule Expert pour des gestionnaires illimités.');
+                toast.error('Fonctionnalité réservée au Forfait Expert Entreprise. Passez à la formule supérieure pour ajouter des collaborateurs.');
               } else {
                 setIsCreateOpen(true);
               }
@@ -308,15 +309,15 @@ export default function ManagersPage() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
-              backgroundColor: '#013E37',
-              borderColor: '#013E37',
+              backgroundColor: isQuotaReached ? '#64748b' : '#013E37',
+              borderColor: isQuotaReached ? '#64748b' : '#013E37',
               padding: '10px 20px',
               fontWeight: '600',
               borderRadius: '10px',
-              boxShadow: '0 4px 14px rgba(1, 62, 55, 0.25)'
+              boxShadow: isQuotaReached ? 'none' : '0 4px 14px rgba(1, 62, 55, 0.25)'
             }}
           >
-            <Plus size={18} />
+            {isQuotaReached ? <Lock size={16} /> : <Plus size={18} />}
             Nouveau Collaborateur
           </button>
         </div>
@@ -340,10 +341,10 @@ export default function ManagersPage() {
               </div>
               <div>
                 <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-main)' }}>
-                  Limite de gestionnaires atteinte ({staffCount} / {maxStaff} accès inclus)
+                  Fonctionnalité Forfait Expert Entreprise
                 </h4>
                 <p style={{ margin: '2px 0 0 0', fontSize: '0.825rem', color: 'var(--text-muted)' }}>
-                  La formule <strong>Expert / Entreprise</strong> vous permet de créer un nombre illimité de gérants avec portefeuilles cloisonnés et comptes-rendus de gestion automatiques.
+                  La gestion d’équipe, l’ajout de gestionnaires et le cloisonnement de portefeuilles par bien sont réservés aux agences souscrivant au forfait <strong>Expert Entreprise</strong>.
                 </p>
               </div>
             </div>
@@ -889,7 +890,7 @@ export default function ManagersPage() {
                     </label>
                     <input
                       type="tel"
-                      placeholder="+225 07 00 00 00"
+                      placeholder="+225 07 00 00 00 00"
                       value={createPhone}
                       onChange={(e) => setCreatePhone(e.target.value)}
                       className="input-field"

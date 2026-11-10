@@ -205,6 +205,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               const Icon = item.icon;
               const tourAttr = 
                 item.href === '/properties' ? 'menu-properties' :
+                item.href === '/managers' ? 'menu-managers' :
+                item.href === '/landlords' ? 'menu-landlords' :
                 item.href === '/tenants' ? 'menu-tenants' :
                 item.href === '/contracts' ? 'menu-contracts' :
                 item.href === '/inspections' ? 'menu-inspections' :
