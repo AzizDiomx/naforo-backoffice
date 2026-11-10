@@ -15,6 +15,8 @@ import {
   Bell,
   User,
   LayoutDashboard,
+  ClipboardCheck,
+  MessageCircle,
 } from 'lucide-react';
 
 export interface TourStep {
@@ -35,8 +37,8 @@ const TOUR_STEPS: TourStep[] = [
     icon: Sparkles,
     title: 'Bienvenue sur Naforo !',
     content:
-      'Naforo est votre plateforme tout-en-un pour gérer votre patrimoine immobilier, automatiser la collecte des loyers, signer des baux électroniques et sécuriser vos encaissements.',
-    tip: 'Cette visite guidée rapide (1 min) vous présente les outils clés pour bien démarrer.',
+      'Naforo est votre plateforme tout-en-un pour piloter votre patrimoine immobilier, automatiser la gestion locative, sécuriser vos encaissements et éditer des documents certifiés.',
+    tip: 'Cette visite guidée rapide (1 min) vous présente les outils clés et les toutes dernières fonctionnalités disponibles.',
     placement: 'center',
   },
   {
@@ -46,7 +48,7 @@ const TOUR_STEPS: TourStep[] = [
     icon: LayoutDashboard,
     title: 'Votre barre de navigation',
     content:
-      'Retrouvez ici tous vos modules organisés par domaine : Gestion Locative (Biens, Locataires, Baux), Finances (Factures, Paiements, Bilans), et Services Pro (GED, Messagerie sécurisée).',
+      'Retrouvez ici tous vos modules organisés par domaine : Gestion Locative (Biens, Locataires, Baux, États des lieux), Finances (Factures, Paiements, Bilans), et Services Pro (GED, Relances WhatsApp, Messagerie).',
     tip: 'Le menu s\'adapte automatiquement aux fonctionnalités activées dans votre formule d\'abonnement.',
     placement: 'right',
   },
@@ -57,7 +59,7 @@ const TOUR_STEPS: TourStep[] = [
     icon: Building2,
     title: 'Biens Immobiliers & Lots',
     content:
-      'Ajoutez vos immeubles, villas, appartements et commerces. Vous pouvez subdiviser un immeuble en plusieurs lots indépendants avec leurs propres loyers et surfaces.',
+      'Ajoutez vos immeubles, résidences, villas et appartements. Vous pouvez découper un immeuble en plusieurs lots indépendants avec leurs propres loyers, surfaces et compteurs.',
     tip: 'Commencez par ajouter votre premier bien pour pouvoir y rattacher vos baux et locataires.',
     placement: 'right',
   },
@@ -68,7 +70,7 @@ const TOUR_STEPS: TourStep[] = [
     icon: Users2,
     title: 'Dossiers Locataires & CNI',
     content:
-      'Conservez les coordonnées de vos locataires, téléversez leurs pièces d\'identité (CNI ou Passeport) archivées dans le coffre-fort numérique, et suivez leur score de ponctualité de paiement.',
+      'Conservez les coordonnées complètes de vos locataires, archivez leurs pièces d\'identité (CNI ou Passeport) dans le coffre-fort numérique, et suivez leur score de ponctualité de paiement.',
     tip: 'Chaque locataire dispose aussi de son propre espace web pour consulter ses quittances.',
     placement: 'right',
   },
@@ -79,8 +81,30 @@ const TOUR_STEPS: TourStep[] = [
     icon: FileText,
     title: 'Contrats de Bail & Signature Électronique',
     content:
-      'Générez des contrats de bail complets conformes à la réglementation. Faites-les signer électroniquement à distance par code OTP sécurisé (Naforo Secure Sign), avec possibilité de validation directe pour l\'administrateur.',
+      'Générez des contrats de bail complets conformes à la réglementation. Faites-les signer électroniquement à distance par code OTP sécurisé (Naforo Secure Sign).',
     tip: 'Les échéances et avis d\'échéance seront générés automatiquement selon la date convenue.',
+    placement: 'right',
+  },
+  {
+    id: 'inspections',
+    target: '[data-tour="menu-inspections"]',
+    category: 'Nouveauté Expert',
+    icon: ClipboardCheck,
+    title: 'NOUVEAU : États des Lieux Numériques (EDL)',
+    content:
+      'Réalisez vos constats contradictoires d’entrée et de sortie sur le terrain ! Relevez les compteurs (CIE / SODECI), photographiez chaque pièce, signez électroniquement avec le locataire et obtenez un comparatif automatique de caution.',
+    tip: 'Un PDF certifié et horodaté avec la charte de votre agence est édité automatiquement dès la signature.',
+    placement: 'right',
+  },
+  {
+    id: 'invoices',
+    target: '[data-tour="menu-invoices"]',
+    category: 'Nouveauté Expert',
+    icon: MessageCircle,
+    title: 'NOUVEAU : Facturation & Relances WhatsApp en 1-Clic',
+    content:
+      'Émettez vos avis d’échéance mensuels et relancez vos locataires directement sur WhatsApp en 1 clic ! Les messages préremplis rappellent les montants nets et vos coordonnées de paiement Wave / Orange Money.',
+    tip: 'Retrouvez également le journal complet et les statistiques d’envoi dans le module WhatsApp.',
     placement: 'right',
   },
   {
@@ -113,7 +137,7 @@ const TOUR_STEPS: TourStep[] = [
     title: 'Votre profil, Forfait & Aide',
     content:
       'Accédez à vos paramètres, suivez vos quotas d\'utilisation (nombre de biens et lots restants) et relancez cette visite guidée à tout moment depuis ce menu.',
-    tip: 'Félicitations, vous avez fait le tour ! Cliquez sur « Commencer » pour piloter votre patrimoine.',
+    tip: 'Félicitations, vous êtes prêt ! Cliquez sur « Commencer » pour piloter votre agence.',
     placement: 'bottom',
   },
 ];
@@ -126,11 +150,33 @@ export default function ProductTour() {
   const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
   const popoverRef = useRef<HTMLDivElement>(null);
 
+  // Helper pour récupérer les informations de l'utilisateur connecté
+  const getCurrentUser = () => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const userStr = localStorage.getItem('user');
+      return userStr ? JSON.parse(userStr) : null;
+    } catch {
+      return null;
+    }
+  };
+
   // Vérifier au premier chargement si la visite guidée doit être suggérée
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const hasSeenTour = localStorage.getItem('naforo_tour_completed');
+    const user = getCurrentUser();
+    const role = (user?.role || '').toLowerCase();
+
+    // RÈGLE STRICTE : Ne JAMAIS déclencher la visite guidée pour le Super Admin
+    if (role === 'super_admin') {
+      return;
+    }
+
+    // Clé personnalisée par utilisateur pour garantir le déclenchement à sa première connexion
+    const tourKey = user?.id ? `naforo_tour_completed_${user.id}` : 'naforo_tour_completed';
+    const hasSeenTour = localStorage.getItem(tourKey);
+
     if (!hasSeenTour) {
       // Petite temporisation pour laisser le DOM et les polices se charger
       const timer = setTimeout(() => {
@@ -143,6 +189,14 @@ export default function ProductTour() {
   // Écouter l'événement global pour relancer la visite guidée n'importe quand
   useEffect(() => {
     const handleStartTour = () => {
+      const user = getCurrentUser();
+      const role = (user?.role || '').toLowerCase();
+
+      // Règle stricte : Le Super Admin ne démarre pas le Product Tour
+      if (role === 'super_admin') {
+        return;
+      }
+
       setShowWelcomePrompt(false);
       setCurrentStep(0);
       setIsOpen(true);
@@ -162,6 +216,10 @@ export default function ProductTour() {
     setIsOpen(false);
     setShowWelcomePrompt(false);
     if (markAsCompleted) {
+      const user = getCurrentUser();
+      if (user?.id) {
+        localStorage.setItem(`naforo_tour_completed_${user.id}`, 'true');
+      }
       localStorage.setItem('naforo_tour_completed', 'true');
     }
   };
@@ -393,7 +451,7 @@ export default function ProductTour() {
                 marginBottom: '24px',
               }}
             >
-              Votre espace de gestion locative est prêt. Souhaitez-vous suivre une courte visite guidée interactive pour découvrir les outils essentiels en 1 minute ?
+              Votre espace de gestion locative est prêt. Souhaitez-vous suivre une courte visite guidée interactive pour découvrir les outils essentiels et les nouvelles fonctionnalités en 1 minute ?
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

@@ -221,36 +221,38 @@ export default function Header({ onMenuToggle }: HeaderProps) {
 
         {/* Profil & Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* Bouton Visite Guidée */}
-          <button 
-            onClick={() => window.dispatchEvent(new CustomEvent('start-product-tour'))}
-            title="Démarrer la visite guidée"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              backgroundColor: 'rgba(1, 62, 55, 0.05)',
-              color: '#013E37',
-              border: '1px solid rgba(1, 62, 55, 0.15)',
-              borderRadius: '20px',
-              padding: '6px 12px',
-              fontSize: '0.8rem',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(1, 62, 55, 0.1)';
-              e.currentTarget.style.borderColor = 'rgba(1, 62, 55, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(1, 62, 55, 0.05)';
-              e.currentTarget.style.borderColor = 'rgba(1, 62, 55, 0.15)';
-            }}
-          >
-            <Compass size={15} style={{ color: '#013E37' }} />
-            <span style={{ display: 'none' }} className="tour-label">Visite guidée</span>
-          </button>
+          {/* Bouton Visite Guidée (masqué pour le super admin) */}
+          {userRole !== 'SUPER_ADMIN' && (
+            <button 
+              onClick={() => window.dispatchEvent(new CustomEvent('start-product-tour'))}
+              title="Démarrer la visite guidée"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                backgroundColor: 'rgba(1, 62, 55, 0.05)',
+                color: '#013E37',
+                border: '1px solid rgba(1, 62, 55, 0.15)',
+                borderRadius: '20px',
+                padding: '6px 12px',
+                fontSize: '0.8rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(1, 62, 55, 0.1)';
+                e.currentTarget.style.borderColor = 'rgba(1, 62, 55, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(1, 62, 55, 0.05)';
+                e.currentTarget.style.borderColor = 'rgba(1, 62, 55, 0.15)';
+              }}
+            >
+              <Compass size={15} style={{ color: '#013E37' }} />
+              <span style={{ display: 'none' }} className="tour-label">Visite guidée</span>
+            </button>
+          )}
 
           {/* Composant Notifications Temps Réel */}
           <div data-tour="notification-bell">
@@ -322,16 +324,18 @@ export default function Header({ onMenuToggle }: HeaderProps) {
                   <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{userEmail}</span>
                 </div>
 
-                <button 
-                  onClick={() => {
-                    setShowDropdown(false);
-                    window.dispatchEvent(new CustomEvent('start-product-tour'));
-                  }} 
-                  className="dropdown-item" 
-                  style={{ outline: 'none' }}
-                >
-                  <Compass size={16} style={{ color: '#013E37' }} /> Visite guidée
-                </button>
+                {userRole !== 'SUPER_ADMIN' && (
+                  <button 
+                    onClick={() => {
+                      setShowDropdown(false);
+                      window.dispatchEvent(new CustomEvent('start-product-tour'));
+                    }} 
+                    className="dropdown-item" 
+                    style={{ outline: 'none' }}
+                  >
+                    <Compass size={16} style={{ color: '#013E37' }} /> Visite guidée
+                  </button>
+                )}
                 
                 <Link href="/profile" className="dropdown-item" onClick={() => setShowDropdown(false)}>
                   <User size={16} /> Paramètre profil
