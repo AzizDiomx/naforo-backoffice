@@ -244,6 +244,15 @@ h1, h2, h3, h4, h5, h6 {
   width: 100%;
 }
 
+.sticky-header-wrapper {
+  position: sticky;
+  top: 0;
+  z-index: 35;
+  width: 100%;
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+}
+
 .header {
   height: 64px;
   background-color: #ffffff;
@@ -252,9 +261,6 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
-  position: sticky;
-  top: 0;
-  z-index: 10;
 }
 
 .content-container {
@@ -272,7 +278,7 @@ h1, h2, h3, h4, h5, h6 {
   bottom: 0;
   background-color: rgba(2, 6, 23, 0.4);
   backdrop-filter: blur(2px);
-  z-index: 40;
+  z-index: 45;
 }
 .sidebar-overlay.open {
   display: block;
