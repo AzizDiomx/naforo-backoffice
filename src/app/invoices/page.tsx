@@ -26,7 +26,8 @@ import {
   RotateCcw,
   Calendar,
   Phone,
-  FileText
+  FileText,
+  MessageCircle
 } from 'lucide-react';
 
 const MONTH_NAMES = [
@@ -216,6 +217,22 @@ export default function InvoicesPage() {
       showFormSuccess('Avis d’échéance et relance envoyés avec succès au locataire par email !');
     } catch (err) {
       handleFormError(err, 'Erreur lors de l’envoi de la relance.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Send WhatsApp Reminder
+  const handleSendWhatsAppReminder = async (invoiceId: string) => {
+    setActionLoading(true);
+    try {
+      const res = await api.post(`/invoices/${invoiceId}/remind-whatsapp`, {});
+      if (res.directWhatsAppUrl) {
+        window.open(res.directWhatsAppUrl, '_blank');
+      }
+      showFormSuccess(`Relance WhatsApp préparée pour ${res.recipientName || 'le locataire'} ! Discussion WhatsApp ouverte.`);
+    } catch (err) {
+      handleFormError(err, 'Erreur lors de la préparation de la relance WhatsApp.');
     } finally {
       setActionLoading(false);
     }
@@ -714,11 +731,33 @@ export default function InvoicesPage() {
                               onClick={() => handleSendReminder(inv.id)}
                               className="btn btn-secondary"
                               style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '4px' }}
-                              title="Envoyer une notification de relance au locataire"
+                              title="Envoyer une notification de relance au locataire par email"
                               disabled={actionLoading}
                             >
                               <Mail size={13} />
-                              Relancer
+                              Email
+                            </button>
+                          )}
+
+                          {/* Relancer WhatsApp */}
+                          {inv.status !== 'paid' && inv.status !== 'cancelled' && (
+                            <button
+                              onClick={() => handleSendWhatsAppReminder(inv.id)}
+                              className="btn btn-secondary"
+                              style={{
+                                padding: '6px 10px',
+                                fontSize: '0.75rem',
+                                gap: '4px',
+                                backgroundColor: '#10b981',
+                                color: '#ffffff',
+                                borderColor: '#059669',
+                                fontWeight: 600,
+                              }}
+                              title="Relancer le locataire directement sur WhatsApp (1-clic)"
+                              disabled={actionLoading}
+                            >
+                              <MessageCircle size={13} />
+                              WhatsApp
                             </button>
                           )}
 

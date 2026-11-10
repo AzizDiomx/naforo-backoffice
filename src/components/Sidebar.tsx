@@ -22,7 +22,9 @@ import {
   History,
   ShieldCheck,
   Landmark,
-  Palette
+  Palette,
+  ClipboardCheck,
+  MessageCircle
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
@@ -129,6 +131,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { name: 'Bailleurs & CRG', href: '/landlords', icon: Landmark, feature: 'landlords_crg', group: 'GESTION LOCATIVE' },
     { name: 'Locataires', href: '/tenants', icon: Users2, feature: 'base', group: 'GESTION LOCATIVE' },
     { name: 'Contrats de Bail', href: '/contracts', icon: FileText, feature: 'base', group: 'GESTION LOCATIVE' },
+    { name: 'États des Lieux', href: '/inspections', icon: ClipboardCheck, feature: 'digital_inspections', group: 'GESTION LOCATIVE' },
     { name: 'Incidents & Pannes', href: '/incidents', icon: AlertTriangle, feature: 'base', group: 'GESTION LOCATIVE' },
 
     { name: 'Factures de Loyer', href: '/invoices', icon: Receipt, feature: 'base', group: 'FINANCES' },
@@ -136,6 +139,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { name: 'Comptabilité & Bilans', href: '/accounting', icon: BarChart3, feature: 'excel_export', group: 'FINANCES' },
 
     { name: 'Messagerie Locataires', href: '/chat', icon: MessageSquare, feature: 'chat_encrypted', group: 'SERVICES PRO' },
+    { name: 'Relances WhatsApp', href: '/whatsapp', icon: MessageCircle, feature: 'whatsapp_reminders', group: 'SERVICES PRO' },
     { name: 'Coffre-fort (GED)', href: '/documents', icon: FolderKanban, feature: 'ged_vault', group: 'SERVICES PRO' },
     { name: 'Marque Blanche Agence', href: '/agency/branding', icon: Palette, feature: 'white_label', group: 'SERVICES PRO' },
     { name: 'Mon Abonnement', href: '/subscription', icon: Gem, feature: 'base', group: 'SERVICES PRO' },
