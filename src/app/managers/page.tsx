@@ -463,8 +463,8 @@ export default function ManagersPage() {
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="input-field"
-              style={{ padding: '8px 12px', borderRadius: '8px', minWidth: '160px' }}
+              className="form-control"
+              style={{ height: '40px', borderRadius: '8px', minWidth: '170px', padding: '0 12px' }}
             >
               <option value="all">Tous les rôles</option>
               <option value="manager">Gérants de portefeuille</option>
@@ -475,8 +475,8 @@ export default function ManagersPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="input-field"
-              style={{ padding: '8px 12px', borderRadius: '8px', minWidth: '140px' }}
+              className="form-control"
+              style={{ height: '40px', borderRadius: '8px', minWidth: '150px', padding: '0 12px' }}
             >
               <option value="all">Tous les statuts</option>
               <option value="active">Actifs</option>
@@ -487,7 +487,7 @@ export default function ManagersPage() {
               onClick={fetchManagers}
               className="btn btn-secondary"
               title="Rafraîchir"
-              style={{ padding: '8px 12px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              style={{ height: '40px', padding: '0 14px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               <RefreshCw size={16} />
             </button>
@@ -851,7 +851,7 @@ export default function ManagersPage() {
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: '600', marginBottom: '6px', color: 'var(--text-main)' }}>
+                    <label className="form-label" style={{ color: 'var(--text-main)' }}>
                       Prénom <span style={{ color: '#EF4444' }}>*</span>
                     </label>
                     <input
@@ -860,13 +860,13 @@ export default function ManagersPage() {
                       placeholder="Ex: Ibrahim"
                       value={createFirstName}
                       onChange={(e) => setCreateFirstName(e.target.value)}
-                      className="input-field"
-                      style={{ width: '100%', borderRadius: '8px' }}
+                      className="form-control"
+                      style={{ borderRadius: '8px' }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: '600', marginBottom: '6px', color: 'var(--text-main)' }}>
+                    <label className="form-label" style={{ color: 'var(--text-main)' }}>
                       Nom de famille <span style={{ color: '#EF4444' }}>*</span>
                     </label>
                     <input
@@ -875,15 +875,15 @@ export default function ManagersPage() {
                       placeholder="Ex: Kouamé"
                       value={createLastName}
                       onChange={(e) => setCreateLastName(e.target.value)}
-                      className="input-field"
-                      style={{ width: '100%', borderRadius: '8px' }}
+                      className="form-control"
+                      style={{ borderRadius: '8px' }}
                     />
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: '600', marginBottom: '6px', color: 'var(--text-main)' }}>
+                    <label className="form-label" style={{ color: 'var(--text-main)' }}>
                       Adresse Email professionnelle <span style={{ color: '#EF4444' }}>*</span>
                     </label>
                     <input
@@ -892,13 +892,13 @@ export default function ManagersPage() {
                       placeholder="ibrahim@agence.ci"
                       value={createEmail}
                       onChange={(e) => setCreateEmail(e.target.value)}
-                      className="input-field"
-                      style={{ width: '100%', borderRadius: '8px' }}
+                      className="form-control"
+                      style={{ borderRadius: '8px' }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: '600', marginBottom: '6px', color: 'var(--text-main)' }}>
+                    <label className="form-label" style={{ color: 'var(--text-main)' }}>
                       Numéro de téléphone
                     </label>
                     <input
@@ -906,22 +906,22 @@ export default function ManagersPage() {
                       placeholder="+225 07 00 00 00 00"
                       value={createPhone}
                       onChange={(e) => setCreatePhone(e.target.value)}
-                      className="input-field"
-                      style={{ width: '100%', borderRadius: '8px' }}
+                      className="form-control"
+                      style={{ borderRadius: '8px' }}
                     />
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: '600', marginBottom: '6px', color: 'var(--text-main)' }}>
+                    <label className="form-label" style={{ color: 'var(--text-main)' }}>
                       Rôle et habilitations
                     </label>
                     <select
                       value={createRole}
                       onChange={(e: any) => setCreateRole(e.target.value)}
-                      className="input-field"
-                      style={{ width: '100%', borderRadius: '8px' }}
+                      className="form-control"
+                      style={{ borderRadius: '8px' }}
                     >
                       <option value="manager">Gérant de Portefeuille (Cloisonné)</option>
                       <option value="accountant">Comptable / Trésorier</option>
@@ -930,7 +930,7 @@ export default function ManagersPage() {
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: '600', marginBottom: '6px', color: 'var(--text-main)' }}>
+                    <label className="form-label" style={{ color: 'var(--text-main)' }}>
                       Mot de passe temporaire
                     </label>
                     <div style={{ position: 'relative' }}>
@@ -939,8 +939,8 @@ export default function ManagersPage() {
                         placeholder="Généré automatiquement si vide"
                         value={createPassword}
                         onChange={(e) => setCreatePassword(e.target.value)}
-                        className="input-field"
-                        style={{ width: '100%', borderRadius: '8px', paddingRight: '36px' }}
+                        className="form-control"
+                        style={{ borderRadius: '8px', paddingRight: '36px' }}
                       />
                       <button
                         type="button"
@@ -1129,14 +1129,14 @@ export default function ManagersPage() {
               {/* Search & Bulk Selection Toolbar */}
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '14px' }}>
                 <div style={{ position: 'relative', flex: 1 }}>
-                  <Search size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                   <input
                     type="text"
                     placeholder="Filtrer les biens du patrimoine..."
                     value={portfolioSearch}
                     onChange={(e) => setPortfolioSearch(e.target.value)}
-                    className="input-field"
-                    style={{ width: '100%', paddingLeft: '34px', fontSize: '0.825rem', borderRadius: '8px' }}
+                    className="form-control"
+                    style={{ width: '100%', paddingLeft: '36px', height: '38px', fontSize: '0.85rem', borderRadius: '8px' }}
                   />
                 </div>
 
@@ -1144,7 +1144,7 @@ export default function ManagersPage() {
                   type="button"
                   onClick={() => setPortfolioSelectedProps(availableProperties.map((p) => p.id))}
                   className="btn btn-secondary"
-                  style={{ fontSize: '0.775rem', padding: '8px 12px', borderRadius: '8px' }}
+                  style={{ fontSize: '0.775rem', height: '38px', padding: '0 12px', borderRadius: '8px' }}
                 >
                   Tout cocher
                 </button>
@@ -1153,7 +1153,7 @@ export default function ManagersPage() {
                   type="button"
                   onClick={() => setPortfolioSelectedProps([])}
                   className="btn btn-secondary"
-                  style={{ fontSize: '0.775rem', padding: '8px 12px', borderRadius: '8px' }}
+                  style={{ fontSize: '0.775rem', height: '38px', padding: '0 12px', borderRadius: '8px' }}
                 >
                   Tout décocher
                 </button>

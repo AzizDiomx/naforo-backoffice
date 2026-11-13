@@ -288,7 +288,7 @@ export default function WhatsAppHubPage() {
 
           <form onSubmit={handleQuickSend} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>
+              <label className="form-label">
                 Numéro WhatsApp du destinataire *
               </label>
               <input
@@ -296,16 +296,17 @@ export default function WhatsAppHubPage() {
                 placeholder="Ex: +225 07 00 00 00 00 ou 0700000000"
                 value={quickPhone}
                 onChange={(e) => setQuickPhone(e.target.value)}
-                className="input-field"
+                className="form-control"
+                style={{ borderRadius: '8px' }}
                 required
               />
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginTop: '4px' }}>
                 Les numéros ivoiriens (01, 05, 07) sont automatiquement formatés en +225.
               </span>
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>
+              <label className="form-label">
                 Nom du destinataire (facultatif)
               </label>
               <input
@@ -313,12 +314,13 @@ export default function WhatsAppHubPage() {
                 placeholder="Ex: M. Kouassi Jean"
                 value={quickName}
                 onChange={(e) => setQuickName(e.target.value)}
-                className="input-field"
+                className="form-control"
+                style={{ borderRadius: '8px' }}
               />
             </div>
 
             <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>
+              <label className="form-label">
                 Modèle prérempli
               </label>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -358,17 +360,17 @@ export default function WhatsAppHubPage() {
             </div>
 
             <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>
+              <label className="form-label">
                 Contenu du message WhatsApp *
               </label>
               <textarea
                 rows={4}
                 value={quickMessage}
                 onChange={(e) => setQuickMessage(e.target.value)}
-                className="input-field"
+                className="form-control"
                 placeholder="Rédigez votre message WhatsApp..."
                 required
-                style={{ fontFamily: 'inherit', resize: 'vertical' }}
+                style={{ fontFamily: 'inherit', resize: 'vertical', borderRadius: '8px' }}
               />
             </div>
 
@@ -377,7 +379,7 @@ export default function WhatsAppHubPage() {
                 type="submit"
                 disabled={sending}
                 className="btn btn-primary"
-                style={{ backgroundColor: '#10b981', borderColor: '#059669', display: 'flex', alignItems: 'center', gap: '8px' }}
+                style={{ backgroundColor: '#10b981', borderColor: '#059669', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '8px', fontWeight: 600 }}
               >
                 <MessageCircle size={16} />
                 {sending ? 'Préparation...' : 'Envoyer / Ouvrir sur WhatsApp'}
@@ -396,22 +398,22 @@ export default function WhatsAppHubPage() {
             {/* Filters */}
             <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ position: 'relative' }}>
-                <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input
                   type="text"
                   placeholder="Rechercher nom, numéro..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="input-field"
-                  style={{ paddingLeft: '32px', height: '36px', fontSize: '0.85rem', width: '200px' }}
+                  className="form-control"
+                  style={{ paddingLeft: '36px', height: '38px', fontSize: '0.85rem', width: '220px', borderRadius: '8px' }}
                 />
               </div>
 
               <select
                 value={templateFilter}
                 onChange={(e) => { setTemplateFilter(e.target.value); setPage(1); }}
-                className="input-field"
-                style={{ height: '36px', fontSize: '0.85rem', width: '160px' }}
+                className="form-control"
+                style={{ height: '38px', fontSize: '0.85rem', width: '170px', borderRadius: '8px' }}
               >
                 <option value="">Tous types</option>
                 <option value="invoice_due">Avis d’échéance</option>
@@ -423,8 +425,8 @@ export default function WhatsAppHubPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-                className="input-field"
-                style={{ height: '36px', fontSize: '0.85rem', width: '150px' }}
+                className="form-control"
+                style={{ height: '38px', fontSize: '0.85rem', width: '160px', borderRadius: '8px' }}
               >
                 <option value="">Tous statuts</option>
                 <option value="sent">Transmis</option>
@@ -432,7 +434,7 @@ export default function WhatsAppHubPage() {
                 <option value="direct_link_opened">Lien 1-clic</option>
               </select>
 
-              <button type="submit" className="btn btn-secondary" style={{ height: '36px', padding: '0 12px' }}>
+              <button type="submit" className="btn btn-secondary" style={{ height: '38px', padding: '0 16px', borderRadius: '8px' }}>
                 Filtrer
               </button>
             </form>

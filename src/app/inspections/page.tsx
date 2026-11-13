@@ -218,22 +218,22 @@ export default function InspectionsPage() {
         <div className="card" style={{ padding: '16px 20px' }}>
           <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', flex: '1 1 240px' }}>
-              <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+              <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input
                 type="text"
                 placeholder="Rechercher par N° constat, bien, locataire..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="input-field"
-                style={{ paddingLeft: '36px' }}
+                className="form-control"
+                style={{ paddingLeft: '38px', height: '42px', borderRadius: '8px' }}
               />
             </div>
 
             <select
               value={typeFilter}
               onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
-              className="input-field"
-              style={{ width: '170px' }}
+              className="form-control"
+              style={{ width: '180px', height: '42px', borderRadius: '8px' }}
             >
               <option value="">Tous types</option>
               <option value="entry">Entrée des lieux</option>
@@ -243,8 +243,8 @@ export default function InspectionsPage() {
             <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-              className="input-field"
-              style={{ width: '180px' }}
+              className="form-control"
+              style={{ width: '190px', height: '42px', borderRadius: '8px' }}
             >
               <option value="">Tous statuts</option>
               <option value="draft">Brouillon</option>
@@ -252,7 +252,7 @@ export default function InspectionsPage() {
               <option value="signed">Signé & Certifié</option>
             </select>
 
-            <button type="submit" className="btn btn-secondary">
+            <button type="submit" className="btn btn-secondary" style={{ height: '42px', padding: '0 18px', borderRadius: '8px' }}>
               Filtrer
             </button>
           </form>
@@ -455,8 +455,8 @@ export default function InspectionsPage() {
                 <select
                   value={selectedContractId}
                   onChange={(e) => setSelectedContractId(e.target.value)}
-                  className="input-field"
-                  style={{ flex: 1 }}
+                  className="form-control"
+                  style={{ flex: 1, height: '42px', borderRadius: '8px' }}
                 >
                   <option value="">Sélectionner un contrat de bail...</option>
                   {contracts.map((c) => (
@@ -471,7 +471,7 @@ export default function InspectionsPage() {
                   onClick={handleRunComparison}
                   disabled={comparing || !selectedContractId}
                   className="btn btn-primary"
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '42px', padding: '0 18px', borderRadius: '8px' }}
                 >
                   <GitCompare size={15} />
                   {comparing ? 'Analyse...' : 'Comparer'}

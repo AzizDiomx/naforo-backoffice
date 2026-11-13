@@ -322,7 +322,7 @@ export default function CreateInspectionPage() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>
+                <label className="form-label">
                   Type de Constat *
                 </label>
                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -330,7 +330,7 @@ export default function CreateInspectionPage() {
                     type="button"
                     onClick={() => setType('entry')}
                     className={`btn ${type === 'entry' ? 'btn-primary' : 'btn-secondary'}`}
-                    style={{ flex: 1, backgroundColor: type === 'entry' ? '#059669' : undefined, borderColor: type === 'entry' ? '#047857' : undefined }}
+                    style={{ flex: 1, backgroundColor: type === 'entry' ? '#059669' : undefined, borderColor: type === 'entry' ? '#047857' : undefined, color: type === 'entry' ? '#ffffff' : undefined }}
                   >
                     🟢 Entrée des lieux
                   </button>
@@ -338,7 +338,7 @@ export default function CreateInspectionPage() {
                     type="button"
                     onClick={() => setType('exit')}
                     className={`btn ${type === 'exit' ? 'btn-primary' : 'btn-secondary'}`}
-                    style={{ flex: 1, backgroundColor: type === 'exit' ? '#dc2626' : undefined, borderColor: type === 'exit' ? '#b91c1c' : undefined }}
+                    style={{ flex: 1, backgroundColor: type === 'exit' ? '#dc2626' : undefined, borderColor: type === 'exit' ? '#b91c1c' : undefined, color: type === 'exit' ? '#ffffff' : undefined }}
                   >
                     🔴 Sortie des lieux
                   </button>
@@ -346,13 +346,13 @@ export default function CreateInspectionPage() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>
+                <label className="form-label">
                   Contrat de Bail associé
                 </label>
                 <select
                   value={selectedContractId}
                   onChange={(e) => handleContractChange(e.target.value)}
-                  className="input-field"
+                  className="form-control"
                 >
                   <option value="">Sélectionner un contrat (recommandé)...</option>
                   {contracts.map((c) => (
@@ -364,13 +364,13 @@ export default function CreateInspectionPage() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>
+                <label className="form-label">
                   Bien Immobilier *
                 </label>
                 <select
                   value={selectedPropertyId}
                   onChange={(e) => setSelectedPropertyId(e.target.value)}
-                  className="input-field"
+                  className="form-control"
                   required
                 >
                   <option value="">Sélectionner le bien...</option>
@@ -383,40 +383,41 @@ export default function CreateInspectionPage() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>
+                <label className="form-label">
                   Locataire
                 </label>
                 <input
                   type="text"
                   value={tenantName}
                   onChange={(e) => setTenantName(e.target.value)}
-                  className="input-field"
+                  className="form-control"
                   placeholder="Nom complet du locataire"
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>
+                <label className="form-label">
                   Date d'inspection *
                 </label>
                 <input
                   type="date"
                   value={inspectionDate}
                   onChange={(e) => setInspectionDate(e.target.value)}
-                  className="input-field"
+                  className="form-control"
                   required
-                />
+                >
+                </input>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>
+                <label className="form-label">
                   Gestionnaire / Inspecteur
                 </label>
                 <input
                   type="text"
                   value={inspectorName}
                   onChange={(e) => setInspectorName(e.target.value)}
-                  className="input-field"
+                  className="form-control"
                   placeholder="Nom de l'agent qui réalise le constat"
                 />
               </div>
@@ -432,79 +433,79 @@ export default function CreateInspectionPage() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>
+                <label className="form-label">
                   N° Compteur CIE (Électricité)
                 </label>
                 <input
                   type="text"
                   value={electricityMeterNumber}
                   onChange={(e) => setElectricityMeterNumber(e.target.value)}
-                  className="input-field"
+                  className="form-control"
                   placeholder="Ex: CIE-0482910"
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>
+                <label className="form-label">
                   Index CIE (kWh)
                 </label>
                 <input
                   type="text"
                   value={electricityIndex}
                   onChange={(e) => setElectricityIndex(e.target.value)}
-                  className="input-field"
+                  className="form-control"
                   placeholder="Ex: 014285"
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>
+                <label className="form-label">
                   N° Compteur SODECI (Eau)
                 </label>
                 <input
                   type="text"
                   value={waterMeterNumber}
                   onChange={(e) => setWaterMeterNumber(e.target.value)}
-                  className="input-field"
+                  className="form-control"
                   placeholder="Ex: SOD-993821"
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>
+                <label className="form-label">
                   Index SODECI (m³)
                 </label>
                 <input
                   type="text"
                   value={waterIndex}
                   onChange={(e) => setWaterIndex(e.target.value)}
-                  className="input-field"
+                  className="form-control"
                   placeholder="Ex: 00542"
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>
+                <label className="form-label">
                   Nombre de jeux de clés
                 </label>
                 <input
                   type="number"
                   value={keysCount}
                   onChange={(e) => setKeysCount(e.target.value)}
-                  className="input-field"
+                  className="form-control"
                   min="0"
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>
+                <label className="form-label">
                   Détail remise des clés
                 </label>
                 <input
                   type="text"
                   value={keysDetail}
                   onChange={(e) => setKeysDetail(e.target.value)}
-                  className="input-field"
+                  className="form-control"
                   placeholder="Clé blindée, portail, boîte aux lettres..."
                 />
               </div>
@@ -525,14 +526,14 @@ export default function CreateInspectionPage() {
                   placeholder="Nom de la pièce..."
                   value={newRoomName}
                   onChange={(e) => setNewRoomName(e.target.value)}
-                  className="input-field"
-                  style={{ width: '180px', height: '36px', fontSize: '0.85rem' }}
+                  className="form-control"
+                  style={{ width: '200px', height: '38px', fontSize: '0.85rem' }}
                 />
                 <button
                   type="button"
                   onClick={handleAddRoom}
                   className="btn btn-secondary"
-                  style={{ height: '36px', padding: '0 12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  style={{ height: '38px', padding: '0 14px', display: 'flex', alignItems: 'center', gap: '4px' }}
                 >
                   <Plus size={14} /> Ajouter pièce
                 </button>
@@ -599,7 +600,7 @@ export default function CreateInspectionPage() {
                             type="text"
                             value={el.name}
                             onChange={(e) => handleUpdateElement(rIdx, elIdx, 'name', e.target.value)}
-                            className="input-field"
+                            className="form-control"
                             style={{ fontWeight: 600, fontSize: '0.85rem' }}
                           />
                         </div>
@@ -608,7 +609,7 @@ export default function CreateInspectionPage() {
                           <select
                             value={el.condition}
                             onChange={(e) => handleUpdateElement(rIdx, elIdx, 'condition', e.target.value)}
-                            className="input-field"
+                            className="form-control"
                             style={{
                               fontSize: '0.85rem',
                               fontWeight: 600,
@@ -635,7 +636,7 @@ export default function CreateInspectionPage() {
                             placeholder="Observations / détails..."
                             value={el.comment || ''}
                             onChange={(e) => handleUpdateElement(rIdx, elIdx, 'comment', e.target.value)}
-                            className="input-field"
+                            className="form-control"
                             style={{ fontSize: '0.85rem' }}
                           />
                         </div>
@@ -723,31 +724,31 @@ export default function CreateInspectionPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>
+                  <label className="form-label" style={{ color: '#92400e' }}>
                     Montant estimé des retenues (FCFA)
                   </label>
                   <input
                     type="number"
                     value={estimatedDeductionAmount}
                     onChange={(e) => setEstimatedDeductionAmount(e.target.value)}
-                    className="input-field"
+                    className="form-control"
                     placeholder="Ex: 50000"
                     min="0"
                   />
-                  <span style={{ fontSize: '0.75rem', color: '#b45309' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#b45309', display: 'block', marginTop: '4px' }}>
                     Montant déduit automatiquement de la caution à restituer au locataire.
                   </span>
                 </div>
 
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>
+                  <label className="form-label" style={{ color: '#92400e' }}>
                     Détails des retenues & travaux locatifs imputés
                   </label>
                   <textarea
                     rows={3}
                     value={deductionDetails}
                     onChange={(e) => setDeductionDetails(e.target.value)}
-                    className="input-field"
+                    className="form-control"
                     placeholder="Ex: Remplacement du verrou cassé (15.000 FCFA), peinture d'une partie du mur salon suite à perforation (35.000 FCFA)."
                   />
                 </div>
@@ -764,7 +765,7 @@ export default function CreateInspectionPage() {
               rows={3}
               value={generalObservations}
               onChange={(e) => setGeneralObservations(e.target.value)}
-              className="input-field"
+              className="form-control"
               placeholder="Remarques particulières, état de propreté globale, conditions climatiques lors du constat..."
             />
           </div>
