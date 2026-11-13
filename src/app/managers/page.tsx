@@ -103,14 +103,28 @@ export default function ManagersPage() {
 
   const fetchProperties = async () => {
     try {
-      const res = await api.get<any[]>('/properties/lots');
-      setAvailableProperties(Array.isArray(res) ? res : []);
+      // 1. Récupérer d'abord les lots structurés (immeubles / résidences)
+      const [lotsRes, allPropsRes] = await Promise.allSettled([
+        api.get<any[]>('/properties/lots'),
+        api.get<any>('/properties?limit=250')
+      ]);
+
+      const lotsList = lotsRes.status === 'fulfilled' && Array.isArray(lotsRes.value) ? lotsRes.value : [];
+      const allProps = allPropsRes.status === 'fulfilled' ? (Array.isArray(allPropsRes.value) ? allPropsRes.value : allPropsRes.value?.data || []) : [];
+
+      const map = new Map<string, any>();
+      // Ajouter en priorité les lots
+      lotsList.forEach((l) => map.set(l.id, l));
+      // Ajouter les autres biens indépendants
+      allProps.forEach((p: any) => {
+        if (!map.has(p.id)) {
+          map.set(p.id, p);
+        }
+      });
+
+      setAvailableProperties(Array.from(map.values()));
     } catch {
-      // Fallback standard list
-      api.get<any>('/properties?limit=100').then((res) => {
-        const list = Array.isArray(res) ? res : res.data || [];
-        setAvailableProperties(list);
-      }).catch(() => {});
+      setAvailableProperties([]);
     }
   };
 
@@ -309,12 +323,11 @@ export default function ManagersPage() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
-              backgroundColor: isQuotaReached ? '#64748b' : '#013E37',
-              borderColor: isQuotaReached ? '#64748b' : '#013E37',
+              backgroundColor: isQuotaReached ? '#64748b' : '#FFEFB3',
+              borderColor: isQuotaReached ? '#64748b' : '#FFEFB3',
               padding: '10px 20px',
               fontWeight: '600',
               borderRadius: '10px',
-              
               boxShadow: isQuotaReached ? 'none' : '0 4px 14px rgba(1, 62, 55, 0.25)'
             }}
           >

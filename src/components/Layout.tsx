@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Sparkles, Clock, ArrowRight } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { Sparkles, Clock, ArrowRight, ShieldAlert } from 'lucide-react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import { useSubscriptionFeature } from '@/lib/useSubscriptionFeature';
@@ -15,13 +16,23 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [showTrialModal, setShowTrialModal] = useState(false);
+  const [userRole, setUserRole] = useState<string>('');
   const { subscription } = useSubscriptionFeature();
 
   useEffect(() => {
     setMounted(true);
+
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        if (u.role) setUserRole(u.role);
+      }
+    } catch {}
 
     const verifyAndKeepSessionAlive = async () => {
       const accessToken = localStorage.getItem('accessToken');
@@ -85,6 +96,31 @@ export default function Layout({ children }: LayoutProps) {
     subscription?.starterTrialDaysLeft !== null &&
     subscription?.starterTrialDaysLeft !== undefined &&
     subscription.starterTrialDaysLeft <= 7;
+
+  const isRestrictedForAccountant =
+    userRole === 'accountant' &&
+    (pathname.startsWith('/managers') ||
+      pathname.startsWith('/agency') ||
+      pathname.startsWith('/subscription') ||
+      pathname.startsWith('/inspections') ||
+      pathname.startsWith('/whatsapp'));
+
+  const isRestrictedForManager =
+    userRole === 'manager' &&
+    (pathname.startsWith('/managers') ||
+      pathname.startsWith('/agency') ||
+      pathname.startsWith('/subscription') ||
+      pathname.startsWith('/accounting'));
+
+  const isRestrictedForTechnician =
+    userRole === 'technician' &&
+    !pathname.startsWith('/incidents') &&
+    !pathname.startsWith('/chat') &&
+    !pathname.startsWith('/notifications') &&
+    pathname !== '/dashboard' &&
+    pathname !== '/';
+
+  const isAccessRestricted = isRestrictedForAccountant || isRestrictedForManager || isRestrictedForTechnician;
 
   return (
     <div className="app-container">
@@ -222,7 +258,54 @@ export default function Layout({ children }: LayoutProps) {
         </div>
 
         <main className="content-container">
-          {children}
+          {isAccessRestricted ? (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '60vh',
+              textAlign: 'center',
+              padding: '32px 20px'
+            }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '16px',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                color: '#EF4444',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '16px'
+              }}>
+                <ShieldAlert size={32} />
+              </div>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '8px' }}>
+                Accès restreint à votre profil
+              </h2>
+              <p style={{ maxWidth: '480px', color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '24px', lineHeight: 1.5 }}>
+                Cet écran est réservé aux administrateurs ou à d'autres habilitations de votre agence.
+                Votre profil ({userRole === 'accountant' ? 'Comptable' : userRole === 'manager' ? 'Gérant de Portefeuille' : userRole}) n'a pas les droits nécessaires pour y accéder.
+              </p>
+              <Link
+                href="/dashboard"
+                className="btn btn-primary"
+                style={{
+                  backgroundColor: '#013E37',
+                  color: '#FFFFFF',
+                  padding: '10px 24px',
+                  borderRadius: '10px',
+                  fontWeight: 600,
+                  textDecoration: 'none'
+                }}
+              >
+                Retourner à mon tableau de bord
+              </Link>
+            </div>
+          ) : (
+            children
+          )}
         </main>
       </div>
     </div>

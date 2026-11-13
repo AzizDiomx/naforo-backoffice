@@ -154,19 +154,72 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { name: 'Mon Abonnement', href: '/subscription', icon: Gem, feature: 'base', group: 'SERVICES PRO' },
   ];
 
-  const menuItems = userRole === 'super_admin'
-    ? [
+  const getRoleFilteredItems = () => {
+    // 1. Superadmin (SaaS Platform Admin)
+    if (userRole === 'super_admin') {
+      return [
         { name: 'Dashboard & Stats', href: '/admin/dashboard', icon: LayoutDashboard, group: 'ADMINISTRATION' },
         { name: 'Organisations & Agences', href: '/admin/organizations', icon: Building2, group: 'ADMINISTRATION' },
         { name: 'Piste d\'Audit', href: '/admin/audit-logs', icon: History, group: 'ADMINISTRATION' },
         { name: 'Diffusion Notifications', href: '/admin/broadcast', icon: Radio, group: 'ADMINISTRATION' },
         { name: 'Gestion des Forfaits', href: '/admin/plans', icon: Gem, group: 'SAAS' },
         { name: 'Validation Abonnements', href: '/admin/subscriptions', icon: CreditCard, group: 'SAAS' },
-      ]
-    : allOwnerMenuItems.filter(item => {
-        if (item.href === '/managers' && userRole === 'manager') return false;
-        return item.feature === 'base' || isFeatureAvailable(item.feature);
-      });
+      ];
+    }
+
+    // 2. Comptable / Trésorier (Accountant) : Accès exclusif finances, factures, encaissements, quittances, CRG, bilans
+    if (userRole === 'accountant') {
+      return [
+        { name: 'Tableau de Bord', href: '/dashboard', icon: LayoutDashboard, feature: 'base', group: 'FINANCES & TRÉSORERIE' },
+        { name: 'Factures de Loyer', href: '/invoices', icon: Receipt, feature: 'base', group: 'FINANCES & TRÉSORERIE' },
+        { name: 'Paiements Reçus', href: '/payments', icon: CreditCard, feature: 'base', group: 'FINANCES & TRÉSORERIE' },
+        { name: 'Comptabilité & Bilans', href: '/accounting', icon: BarChart3, feature: 'excel_export', group: 'FINANCES & TRÉSORERIE' },
+        { name: 'Bailleurs & CRG', href: '/landlords', icon: Landmark, feature: 'landlords_crg', group: 'FINANCES & TRÉSORERIE' },
+
+        { name: 'Contrats de Bail', href: '/contracts', icon: FileText, feature: 'base', group: 'CONSULTATION LOCATIVE' },
+        { name: 'Locataires', href: '/tenants', icon: Users2, feature: 'base', group: 'CONSULTATION LOCATIVE' },
+        { name: 'Coffre-fort (GED)', href: '/documents', icon: FolderKanban, feature: 'ged_vault', group: 'DOCUMENTS & PIÈCES' },
+        { name: 'Notifications', href: '/notifications', icon: Bell, feature: 'base', group: 'COMMUNICATION' },
+      ].filter(item => item.feature === 'base' || isFeatureAvailable(item.feature));
+    }
+
+    // 3. Gérant de Portefeuille (Manager) : Gestion locative de son portefeuille sans accès administration agence ni compta générale
+    if (userRole === 'manager') {
+      return [
+        { name: 'Tableau de Bord', href: '/dashboard', icon: LayoutDashboard, feature: 'base', group: 'PRINCIPAL' },
+        { name: 'Biens Immobiliers', href: '/properties', icon: Building2, feature: 'base', group: 'GESTION DU PORTEFEUILLE' },
+        { name: 'Locataires', href: '/tenants', icon: Users2, feature: 'base', group: 'GESTION DU PORTEFEUILLE' },
+        { name: 'Contrats de Bail', href: '/contracts', icon: FileText, feature: 'base', group: 'GESTION DU PORTEFEUILLE' },
+        { name: 'États des Lieux', href: '/inspections', icon: ClipboardCheck, feature: 'digital_inspections', group: 'GESTION DU PORTEFEUILLE' },
+        { name: 'Incidents & Pannes', href: '/incidents', icon: AlertTriangle, feature: 'base', group: 'GESTION DU PORTEFEUILLE' },
+
+        { name: 'Factures de Loyer', href: '/invoices', icon: Receipt, feature: 'base', group: 'SUIVI DES ENCAISSEMENTS' },
+        { name: 'Paiements Reçus', href: '/payments', icon: CreditCard, feature: 'base', group: 'SUIVI DES ENCAISSEMENTS' },
+
+        { name: 'Messagerie Locataires', href: '/chat', icon: MessageSquare, feature: 'chat_encrypted', group: 'COMMUNICATION' },
+        { name: 'Relances WhatsApp', href: '/whatsapp', icon: MessageCircle, feature: 'whatsapp_reminders', group: 'COMMUNICATION' },
+        { name: 'Coffre-fort (GED)', href: '/documents', icon: FolderKanban, feature: 'ged_vault', group: 'SERVICES PRO' },
+        { name: 'Notifications', href: '/notifications', icon: Bell, feature: 'base', group: 'COMMUNICATION' },
+      ].filter(item => item.feature === 'base' || isFeatureAvailable(item.feature));
+    }
+
+    // 4. Technicien / Prestataire
+    if (userRole === 'technician') {
+      return [
+        { name: 'Tableau de Bord', href: '/dashboard', icon: LayoutDashboard, feature: 'base', group: 'PRINCIPAL' },
+        { name: 'Incidents & Interventions', href: '/incidents', icon: AlertTriangle, feature: 'base', group: 'MAINTENANCE' },
+        { name: 'Notifications', href: '/notifications', icon: Bell, feature: 'base', group: 'PRINCIPAL' },
+        { name: 'Messagerie', href: '/chat', icon: MessageSquare, feature: 'chat_encrypted', group: 'COMMUNICATION' },
+      ];
+    }
+
+    // 5. Admin / Owner (Directeur d'Agence ou Propriétaire Bailleur)
+    return allOwnerMenuItems.filter(item => {
+      return item.feature === 'base' || isFeatureAvailable(item.feature);
+    });
+  };
+
+  const menuItems = getRoleFilteredItems();
 
   // Extraire les groupes uniques
   const groups = Array.from(new Set(menuItems.map(i => i.group)));
