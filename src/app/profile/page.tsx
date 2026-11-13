@@ -1000,24 +1000,38 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <Link
-                  href="/subscription"
-                  style={{
-                    backgroundColor: '#FFFFFF',
-                    border: '1px solid #CBD5E1',
-                    borderRadius: '8px',
-                    padding: '8px 14px',
+                {userRole === 'admin' || userRole === 'owner' ? (
+                  <Link
+                    href="/subscription"
+                    style={{
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #CBD5E1',
+                      borderRadius: '8px',
+                      padding: '8px 14px',
+                      fontSize: '0.75rem',
+                      fontWeight: '700',
+                      color: '#013E37',
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    Gérer l'abonnement <ArrowRight size={12} />
+                  </Link>
+                ) : (
+                  <span style={{
                     fontSize: '0.75rem',
-                    fontWeight: '700',
-                    color: '#013E37',
-                    textDecoration: 'none',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  Voir l'abonnement <ArrowRight size={12} />
-                </Link>
+                    fontWeight: '600',
+                    color: '#047857',
+                    backgroundColor: '#ECFDF5',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #A7F3D0'
+                  }}>
+                    Formule gérée par l'administrateur
+                  </span>
+                )}
               </div>
 
             </div>
@@ -1702,7 +1716,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 </div>
-              ) : (
+              ) : userRole === 'admin' || userRole === 'owner' ? (
                 <div style={{
                   backgroundColor: '#FFF5F5',
                   border: '1px solid #FED7D7',
@@ -1756,6 +1770,24 @@ export default function ProfilePage() {
                       </button>
                     </div>
                   )}
+                </div>
+              ) : (
+                <div style={{
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '14px',
+                  padding: '20px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#475569' }}>
+                    <ShieldCheck size={18} color="#013E37" />
+                    <h3 style={{ fontSize: '0.95rem', fontWeight: '700', margin: 0, color: '#0F172A' }}>
+                      Gestion de votre Compte Collaborateur
+                    </h3>
+                  </div>
+                  <p style={{ fontSize: '0.75rem', color: '#64748B', lineHeight: '1.5', margin: '8px 0 0 0' }}>
+                    Votre compte est rattaché à l'organisation <strong>{organization?.name || 'de votre agence'}</strong>. 
+                    Les accès, attributions de portefeuille et habilitations sont gérés directement par votre administrateur d'agence.
+                  </p>
                 </div>
               )}
 

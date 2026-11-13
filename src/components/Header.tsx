@@ -100,23 +100,29 @@ export default function Header({ onMenuToggle }: HeaderProps) {
         }}>
           <AlertCircle size={18} />
           <span>
-            <strong>Compte Suspendu (Mode Lecture Seule) :</strong> Votre abonnement a expiré. Toutes les modifications sont bloquées.
+            <strong>Compte Suspendu (Mode Lecture Seule) :</strong> L'abonnement de votre organisation a expiré. Toutes les modifications sont bloquées.
           </span>
-          <Link 
-            href="/subscription" 
-            style={{ 
-              backgroundColor: '#ffffff', 
-              color: '#dc2626', 
-              padding: '4px 12px',
-              borderRadius: '6px',
-              fontWeight: '700',
-              fontSize: '0.8rem',
-              textDecoration: 'none',
-              marginLeft: '4px'
-            }}
-          >
-            Régulariser mon abonnement
-          </Link>
+          {userRole === 'OWNER' || userRole === 'ADMIN' ? (
+            <Link 
+              href="/subscription" 
+              style={{ 
+                backgroundColor: '#ffffff', 
+                color: '#dc2626', 
+                padding: '4px 12px',
+                borderRadius: '6px',
+                fontWeight: '700',
+                fontSize: '0.8rem',
+                textDecoration: 'none',
+                marginLeft: '4px'
+              }}
+            >
+              Régulariser l'abonnement
+            </Link>
+          ) : (
+            <span style={{ fontSize: '0.8rem', opacity: 0.95, textDecoration: 'underline', marginLeft: '6px' }}>
+              Veuillez contacter l'administrateur de votre agence.
+            </span>
+          )}
         </div>
       )}
 
@@ -137,19 +143,21 @@ export default function Header({ onMenuToggle }: HeaderProps) {
         }}>
           <Clock size={16} />
           <span>
-            Votre preuve de paiement d'abonnement est en cours de validation par le Super Admin. Vos droits complets seront activés dès validation.
+            La preuve de paiement d'abonnement de votre organisation est en cours de validation par le Super Admin. Vos droits complets seront activés dès validation.
           </span>
-          <Link 
-            href="/subscription" 
-            style={{ 
-              color: '#ffffff', 
-              textDecoration: 'underline', 
-              fontWeight: 'bold',
-              marginLeft: '6px'
-            }}
-          >
-            Détails
-          </Link>
+          {(userRole === 'OWNER' || userRole === 'ADMIN') && (
+            <Link 
+              href="/subscription" 
+              style={{ 
+                color: '#ffffff', 
+                textDecoration: 'underline', 
+                fontWeight: 'bold',
+                marginLeft: '6px'
+              }}
+            >
+              Détails
+            </Link>
+          )}
         </div>
       )}
 
@@ -171,21 +179,27 @@ export default function Header({ onMenuToggle }: HeaderProps) {
           <AlertCircle size={16} />
           <span>
             {daysLeft <= 0 
-              ? "Votre abonnement expire aujourd'hui ! Pensez à renouveler dès maintenant pour éviter le passage en lecture seule." 
-              : `Votre abonnement expire dans ${daysLeft} jour(s). Pensez à renouveler dès maintenant pour éviter l'interruption de vos accès.`
+              ? "L'abonnement de votre organisation expire aujourd'hui !" 
+              : `L'abonnement de votre organisation expire dans ${daysLeft} jour(s).`
             }
           </span>
-          <Link 
-            href="/subscription" 
-            style={{ 
-              color: '#ffffff', 
-              textDecoration: 'underline', 
-              fontWeight: 'bold',
-              marginLeft: '8px'
-            }}
-          >
-            Renouveler mon forfait
-          </Link>
+          {userRole === 'OWNER' || userRole === 'ADMIN' ? (
+            <Link 
+              href="/subscription" 
+              style={{ 
+                color: '#ffffff', 
+                textDecoration: 'underline', 
+                fontWeight: 'bold',
+                marginLeft: '8px'
+              }}
+            >
+              Renouveler mon forfait
+            </Link>
+          ) : (
+            <span style={{ fontSize: '0.8rem', opacity: 0.95, marginLeft: '6px' }}>
+              (Contactez votre administrateur pour le renouvellement)
+            </span>
+          )}
         </div>
       )}
 
