@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Layout from '@/components/Layout';
 import { api } from '@/lib/api';
 import Link from 'next/link';
@@ -44,6 +44,9 @@ export default function PropertiesPage() {
   
   // Expanded lots in Lots view
   const [expandedLots, setExpandedLots] = useState<Record<string, boolean>>({});
+
+  // Expanded lots in Table List view
+  const [expandedTableLots, setExpandedTableLots] = useState<Record<string, boolean>>({});
 
   // Filter for advanced stats view
   const [selectedStatsLotId, setSelectedStatsLotId] = useState<string>('all');
@@ -145,6 +148,9 @@ export default function PropertiesPage() {
         setLots(lotList);
         if (lotList.length > 0) {
           setExpandedLots({ [lotList[0].id]: true });
+          const allLotsExpanded: Record<string, boolean> = {};
+          lotList.forEach((l: any) => { allLotsExpanded[l.id] = true; });
+          setExpandedTableLots(allLotsExpanded);
         }
 
         if (subData) setSubscription(subData);
@@ -200,6 +206,151 @@ export default function PropertiesPage() {
     const matchesCountry = countryFilter ? (p.country === countryFilter || (countryFilter === 'CI' && p.country === 'Côte d\'Ivoire')) : true;
     return matchesSearch && matchesType && matchesStatus && matchesCountry;
   });
+
+  const LOT_TYPES = ['building', 'residence', 'lot'];
+
+  const toggleTableLot = (lotId: string) => {
+    setExpandedTableLots(prev => ({
+      ...prev,
+      [lotId]: !prev[lotId]
+    }));
+  };
+
+  const expandAllTableLots = () => {
+    const allLotsMap: Record<string, boolean> = {};
+    lots.forEach((l: any) => { allLotsMap[l.id] = true; });
+    properties.forEach((p: any) => {
+      if (LOT_TYPES.includes(p.type) || (p.children && p.children.length > 0)) {
+        allLotsMap[p.id] = true;
+      }
+    });
+    setExpandedTableLots(allLotsMap);
+  };
+
+  const collapseAllTableLots = () => {
+    setExpandedTableLots({});
+  };
+
+  const getActiveTenantName = (prop: any) => {
+    if (prop.currentTenant) {
+      return `${prop.currentTenant.firstName || ''} ${prop.currentTenant.lastName || ''}`.trim();
+    }
+    const activeContract = prop.contracts?.find((c: any) => c.status === 'active');
+    if (activeContract?.tenantProfile) {
+      return `${activeContract.tenantProfile.firstName || ''} ${activeContract.tenantProfile.lastName || ''}`.trim();
+    }
+    return null;
+  };
+
+  const getStructuredTableData = () => {
+    const lotMap = new Map<string, any>();
+
+    // 1. Initialiser avec les lots enrichis depuis /properties/lots
+    lots.forEach((l: any) => {
+      lotMap.set(l.id, {
+        ...l,
+        isLot: true,
+        units: Array.isArray(l.children) ? [...l.children] : [],
+      });
+    });
+
+    // 2. Vérifier les propriétés chargées depuis /properties
+    properties.forEach((p: any) => {
+      const isLot = LOT_TYPES.includes(p.type) || (p.children && p.children.length > 0);
+      if (isLot && !lotMap.has(p.id)) {
+        lotMap.set(p.id, {
+          ...p,
+          isLot: true,
+          units: Array.isArray(p.children) ? [...p.children] : [],
+        });
+      }
+    });
+
+    // 3. Rattacher les unités enfants présentes dans `properties` à leur lot parent
+    properties.forEach((p: any) => {
+      if (p.parentId && lotMap.has(p.parentId)) {
+        const lot = lotMap.get(p.parentId);
+        const idx = lot.units.findIndex((u: any) => u.id === p.id);
+        if (idx >= 0) {
+          lot.units[idx] = { ...lot.units[idx], ...p };
+        } else {
+          lot.units.push(p);
+        }
+      }
+    });
+
+    // 4. Identifier les biens indépendants (sans parent et pas des lots)
+    const standalone: any[] = [];
+    properties.forEach((p: any) => {
+      const isChildOfLot = Boolean(p.parentId && lotMap.has(p.parentId));
+      const isALot = lotMap.has(p.id);
+      if (!isChildOfLot && !isALot) {
+        standalone.push(p);
+      }
+    });
+
+    // 5. Filtrage
+    const searchLower = search.toLowerCase();
+
+    const filteredLots = Array.from(lotMap.values()).map((lot: any) => {
+      const lotMatchesSearch = !search ||
+        lot.name?.toLowerCase().includes(searchLower) ||
+        lot.address?.toLowerCase().includes(searchLower) ||
+        lot.city?.toLowerCase().includes(searchLower);
+
+      const lotMatchesCountry = !countryFilter ||
+        lot.country === countryFilter ||
+        (countryFilter === 'CI' && (lot.country === 'CI' || lot.country === "Côte d'Ivoire"));
+
+      const lotMatchesManager = !managerFilter || lot.managerId === managerFilter;
+
+      // Filtrer les sous-unités de ce lot
+      const matchingUnits = lot.units.filter((u: any) => {
+        const unitMatchesSearch = !search ||
+          u.name?.toLowerCase().includes(searchLower) ||
+          u.address?.toLowerCase().includes(searchLower);
+
+        const unitMatchesType = !typeFilter || u.type === typeFilter;
+        const unitMatchesStatus = !statusFilter || u.status === statusFilter;
+        const unitMatchesManager = !managerFilter || u.managerId === managerFilter;
+
+        return unitMatchesSearch && unitMatchesType && unitMatchesStatus && unitMatchesManager;
+      });
+
+      const hasMatchingUnits = matchingUnits.length > 0;
+      const lotTypeMatches = !typeFilter || LOT_TYPES.includes(typeFilter) ? true : hasMatchingUnits;
+      const lotStatusMatches = !statusFilter ? true : hasMatchingUnits;
+
+      const isMatching = (lotMatchesSearch || hasMatchingUnits) && lotMatchesCountry && (lotMatchesManager || hasMatchingUnits) && lotTypeMatches && lotStatusMatches;
+
+      return {
+        ...lot,
+        isMatching,
+        displayUnits: (hasMatchingUnits || (lotMatchesSearch && !typeFilter && !statusFilter)) ? matchingUnits : lot.units,
+      };
+    }).filter((lot: any) => lot.isMatching);
+
+    const filteredStandalone = standalone.filter((p: any) => {
+      const matchesSearch = !search ||
+        p.name?.toLowerCase().includes(searchLower) ||
+        p.address?.toLowerCase().includes(searchLower) ||
+        p.city?.toLowerCase().includes(searchLower);
+
+      const matchesType = !typeFilter || p.type === typeFilter;
+      const matchesStatus = !statusFilter || p.status === statusFilter;
+      const matchesCountry = !countryFilter ||
+        p.country === countryFilter ||
+        (countryFilter === 'CI' && (p.country === 'CI' || p.country === "Côte d'Ivoire"));
+      const matchesManager = !managerFilter || p.managerId === managerFilter;
+
+      return matchesSearch && matchesType && matchesStatus && matchesCountry && matchesManager;
+    });
+
+    return {
+      lots: filteredLots,
+      standalone: filteredStandalone,
+    };
+  };
 
   const propQuotaReached = subscription ? Boolean(subscription.quotas?.properties?.reached) : false;
   const lotQuotaReached = subscription ? Boolean(subscription.quotas?.lots?.reached) : false;
@@ -994,88 +1145,468 @@ export default function PropertiesPage() {
               </select>
             </div>
 
-            {/* Properties List - Modern SaaS Table Layout */}
+            {/* Toolbar Hiérarchie Lots & Appartements */}
+            {(() => {
+              const structured = getStructuredTableData();
+              const totalLotsCount = structured.lots.length;
+              const totalUnitsInLots = structured.lots.reduce((acc: number, l: any) => acc + (l.displayUnits?.length || 0), 0);
+              const totalStandaloneCount = structured.standalone.length;
+
+              return (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', padding: '0 4px' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Layers size={16} color="var(--primary)" />
+                    <span>
+                      Vue Hiérarchique : <strong>{totalLotsCount} lot(s)</strong> ({totalUnitsInLots} appartement{totalUnitsInLots > 1 ? 's' : ''} regroupé{totalUnitsInLots > 1 ? 's' : ''})
+                      {totalStandaloneCount > 0 && ` et ${totalStandaloneCount} bien(s) indépendant(s)`}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={expandAllTableLots}
+                      className="btn btn-secondary"
+                      style={{ padding: '6px 12px', fontSize: '0.78rem', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <ChevronDown size={14} /> Tout déplier
+                    </button>
+                    <button
+                      type="button"
+                      onClick={collapseAllTableLots}
+                      className="btn btn-secondary"
+                      style={{ padding: '6px 12px', fontSize: '0.78rem', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <ChevronUp size={14} /> Tout replier
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Properties List - Hierarchical SaaS Table Layout */}
             <div className="card" style={{ padding: 0, overflowX: 'auto', border: 'none', boxShadow: '0 4px 14px rgba(0, 0, 0, 0.03)' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border)', backgroundColor: '#f8fafc' }}>
-                    <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.05em' }}>BIEN / LOT</th>
-                    <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.05em' }}>LOCALISATION & ADRESSE</th>
-                    <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.05em' }}>STATUT</th>
-                    <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.05em', textAlign: 'right' }}>LOYER (MENSUEL)</th>
-                    <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.05em', textAlign: 'right' }}>ACTIONS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredProperties.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
-                        Aucun bien immobilier ne correspond à vos critères.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredProperties.map(p => (
-                      <tr key={p.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background-color 0.15s ease' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                        <td style={{ padding: '16px 20px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: 'rgba(1, 62, 55, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
-                              <Building2 size={20} />
-                            </div>
-                            <div>
-                              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>{p.name}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                                {p.type} {p.parent?.name ? `· Lot: ${p.parent.name}` : ''}
-                              </div>
-                              {p.manager && (
-                                <div style={{ fontSize: '0.72rem', color: '#013E37', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                                  <UserCheck size={12} />
-                                  {p.manager.firstName} {p.manager.lastName}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{ padding: '16px 20px' }}>
-                          <div style={{ fontSize: '0.875rem', color: '#334155', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <MapPin size={14} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                            <span style={{ fontWeight: '500' }}>{p.address}</span>
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', marginLeft: '20px' }}>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', backgroundColor: '#f1f5f9', color: '#475569', padding: '1px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '600' }}>
-                              {p.country || 'Côte d\'Ivoire'}
-                            </span>
-                            <span>•</span>
-                            <span style={{ fontWeight: '600', color: 'var(--primary)' }}>{p.city}</span>
-                          </div>
-                        </td>
-                        <td style={{ padding: '16px 20px' }}>
-                          {getStatusBadge(p.status)}
-                        </td>
-                        <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                          <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a' }}>
-                            {p.rentAmount ? formatFcfa(Number(p.rentAmount)) : '-'}
-                          </div>
-                          {p.chargesAmount && Number(p.chargesAmount) > 0 && (
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                              + {formatFcfa(Number(p.chargesAmount))} charges
-                            </div>
-                          )}
-                        </td>
-                        <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                            <Link href={`/properties/${p.id}`} className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', backgroundColor: '#ffffff' }}>
-                              Historique & Détails
-                            </Link>
-                            <Link href={`/properties/${p.id}/edit`} className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', backgroundColor: '#ffffff' }}>
-                              Editer
-                            </Link>
-                          </div>
-                        </td>
+              {(() => {
+                const structured = getStructuredTableData();
+                const hasResults = structured.lots.length > 0 || structured.standalone.length > 0;
+
+                return (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border)', backgroundColor: '#f8fafc' }}>
+                        <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', width: '38%' }}>
+                          LOTS (IMMEUBLES) & APPARTEMENTS
+                        </th>
+                        <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', width: '22%' }}>
+                          LOCALISATION & ADRESSE
+                        </th>
+                        <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', width: '16%' }}>
+                          STATUT / OCCUPATION
+                        </th>
+                        <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', textAlign: 'right', width: '12%' }}>
+                          LOYER (MENSUEL)
+                        </th>
+                        <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', textAlign: 'right', width: '12%' }}>
+                          ACTIONS
+                        </th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody>
+                      {!hasResults ? (
+                        <tr>
+                          <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                            <Building2 size={36} color="var(--primary)" style={{ margin: '0 auto 10px', opacity: 0.6 }} />
+                            <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)' }}>
+                              Aucun lot ou bien ne correspond à vos filtres de recherche.
+                            </div>
+                            <div style={{ fontSize: '0.8rem', marginTop: '4px' }}>
+                              Modifiez vos critères ou réinitialisez les filtres.
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        <>
+                          {/* 1. SECTION DES LOTS ET DE LEURS APPARTEMENTS */}
+                          {structured.lots.map((lot: any) => {
+                            const isExpanded = Boolean(expandedTableLots[lot.id]);
+                            const units = lot.displayUnits || lot.units || [];
+                            const occupiedCount = units.filter((u: any) => u.status === 'occupied').length;
+                            const occupancyRate = units.length > 0 ? Math.round((occupiedCount / units.length) * 100) : 0;
+                            const totalRent = units.reduce((sum: number, u: any) => sum + Number(u.rentAmount || 0), 0);
+                            const totalCharges = units.reduce((sum: number, u: any) => sum + Number(u.chargesAmount || 0), 0);
+
+                            return (
+                              <React.Fragment key={`lot-group-${lot.id}`}>
+                                {/* Ligne Principale : Lot / Immeuble Parent */}
+                                <tr 
+                                  style={{ 
+                                    backgroundColor: '#f8fafc', 
+                                    borderBottom: '1px solid #e2e8f0', 
+                                    borderLeft: '4px solid #013E37',
+                                    transition: 'background-color 0.15s ease'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+                                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                                >
+                                  {/* Colonne Bien/Lot */}
+                                  <td style={{ padding: '14px 20px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleTableLot(lot.id)}
+                                        style={{
+                                          width: '28px',
+                                          height: '28px',
+                                          borderRadius: '6px',
+                                          border: '1px solid #cbd5e1',
+                                          backgroundColor: '#ffffff',
+                                          color: '#013E37',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          cursor: 'pointer',
+                                          padding: 0,
+                                          flexShrink: 0
+                                        }}
+                                        title={isExpanded ? 'Replier les appartements' : 'Déplier les appartements'}
+                                      >
+                                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                      </button>
+
+                                      <div style={{
+                                        width: '40px',
+                                        height: '40px',
+                                        borderRadius: '8px',
+                                        backgroundColor: 'rgba(1, 62, 55, 0.1)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: '#013E37',
+                                        flexShrink: 0
+                                      }}>
+                                        <Building2 size={20} />
+                                      </div>
+
+                                      <div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                          <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
+                                            {lot.name}
+                                          </span>
+                                          <span style={{
+                                            fontSize: '0.675rem',
+                                            fontWeight: 700,
+                                            padding: '2px 8px',
+                                            borderRadius: '4px',
+                                            backgroundColor: '#013E37',
+                                            color: '#FFFFFF',
+                                            textTransform: 'uppercase'
+                                          }}>
+                                            {lot.type || 'LOT'}
+                                          </span>
+                                          <span style={{
+                                            fontSize: '0.72rem',
+                                            fontWeight: 700,
+                                            padding: '2px 8px',
+                                            borderRadius: '12px',
+                                            backgroundColor: '#E2E8F0',
+                                            color: '#334155'
+                                          }}>
+                                            {units.length} unité{units.length > 1 ? 's' : ''}
+                                          </span>
+                                        </div>
+
+                                        {lot.manager && (
+                                          <div style={{ fontSize: '0.72rem', color: '#013E37', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                                            <UserCheck size={12} />
+                                            Gestionnaire : {lot.manager.firstName} {lot.manager.lastName}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  {/* Colonne Localisation */}
+                                  <td style={{ padding: '14px 20px' }}>
+                                    <div style={{ fontSize: '0.85rem', color: '#334155', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <MapPin size={14} style={{ color: '#013E37', flexShrink: 0 }} />
+                                      <span style={{ fontWeight: 500 }}>{lot.address}</span>
+                                    </div>
+                                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: '20px', marginTop: '2px' }}>
+                                      {lot.city} • {lot.country || 'Côte d\'Ivoire'}
+                                    </div>
+                                  </td>
+
+                                  {/* Colonne Statut Consolidé */}
+                                  <td style={{ padding: '14px 20px' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: occupancyRate === 100 ? '#166534' : '#013E37' }}>
+                                        {occupiedCount}/{units.length} Occupé{occupiedCount > 1 ? 's' : ''} ({occupancyRate}%)
+                                      </span>
+                                      <div style={{ width: '90px', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+                                        <div style={{ width: `${occupancyRate}%`, height: '100%', backgroundColor: occupancyRate === 100 ? '#16A34A' : '#013E37', borderRadius: '3px' }} />
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  {/* Colonne Loyer Consolidé */}
+                                  <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                                    <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#013E37' }}>
+                                      {formatFcfa(totalRent)}
+                                    </div>
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                                      Loyer consolidé
+                                    </div>
+                                    {totalCharges > 0 && (
+                                      <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>
+                                        + {formatFcfa(totalCharges)} ch.
+                                      </div>
+                                    )}
+                                  </td>
+
+                                  {/* Colonne Actions Lot */}
+                                  <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                                      <Link 
+                                        href={`/properties/create?lotId=${lot.id}`} 
+                                        className="btn btn-secondary" 
+                                        style={{ padding: '5px 10px', fontSize: '0.75rem', backgroundColor: '#ffffff', display: 'inline-flex', alignItems: 'center', gap: '4px', borderColor: '#013E37', color: '#013E37', fontWeight: 600 }}
+                                      >
+                                        <Plus size={12} /> Unité
+                                      </Link>
+                                      <Link 
+                                        href={`/properties/${lot.id}`} 
+                                        className="btn btn-secondary" 
+                                        style={{ padding: '5px 10px', fontSize: '0.75rem', backgroundColor: '#ffffff' }}
+                                      >
+                                        Détails Lot
+                                      </Link>
+                                      <Link 
+                                        href={`/properties/${lot.id}/edit`} 
+                                        className="btn btn-secondary" 
+                                        style={{ padding: '5px 10px', fontSize: '0.75rem', backgroundColor: '#ffffff' }}
+                                      >
+                                        Éditer
+                                      </Link>
+                                    </div>
+                                  </td>
+                                </tr>
+
+                                {/* Sous-lignes : Appartements et Unités du Lot */}
+                                {isExpanded && (
+                                  units.length === 0 ? (
+                                    <tr style={{ backgroundColor: '#ffffff', borderBottom: '1px solid #f1f5f9' }}>
+                                      <td colSpan={5} style={{ padding: '12px 20px 12px 58px', color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>
+                                        Aucun appartement ou unité n'est encore rattaché à cet immeuble. Cliquez sur « + Unité » pour en ajouter.
+                                      </td>
+                                    </tr>
+                                  ) : (
+                                    units.map((u: any) => {
+                                      const tenantName = getActiveTenantName(u);
+
+                                      return (
+                                        <tr 
+                                          key={`unit-${u.id}`}
+                                          style={{ 
+                                            backgroundColor: '#ffffff', 
+                                            borderBottom: '1px solid #f1f5f9',
+                                            borderLeft: '4px solid rgba(1, 62, 55, 0.25)',
+                                            transition: 'background-color 0.12s ease'
+                                          }}
+                                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
+                                        >
+                                          {/* Appartement / Unité Indentée */}
+                                          <td style={{ padding: '12px 20px 12px 48px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                              <span style={{ color: '#013E37', fontFamily: 'monospace', fontWeight: 700, fontSize: '0.9rem' }}>└─</span>
+                                              <div style={{ 
+                                                width: '32px', 
+                                                height: '32px', 
+                                                borderRadius: '6px', 
+                                                backgroundColor: '#F1F5F9', 
+                                                color: '#013E37', 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                justifyContent: 'center',
+                                                flexShrink: 0
+                                              }}>
+                                                <DoorOpen size={16} />
+                                              </div>
+                                              <div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                  <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--primary)' }}>
+                                                    {u.name}
+                                                  </span>
+                                                  <span style={{ 
+                                                    fontSize: '0.65rem', 
+                                                    fontWeight: 600, 
+                                                    padding: '1px 6px', 
+                                                    borderRadius: '4px', 
+                                                    backgroundColor: '#F1F5F9', 
+                                                    color: '#475569', 
+                                                    textTransform: 'uppercase' 
+                                                  }}>
+                                                    {u.type}
+                                                  </span>
+                                                </div>
+                                                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '1px' }}>
+                                                  {u.floor !== null && u.floor !== undefined ? (u.floor === 0 ? 'RDC' : `${u.floor}ème étage`) : ''}
+                                                  {u.areaSqm ? ` · ${u.areaSqm} m²` : ''}
+                                                  {u.rooms ? ` · ${u.rooms} pièce${u.rooms > 1 ? 's' : ''}` : ''}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </td>
+
+                                          {/* Localisation / Rattachement */}
+                                          <td style={{ padding: '12px 20px' }}>
+                                            <div style={{ fontSize: '0.775rem', color: 'var(--text-muted)' }}>
+                                              Rattaché à : <strong style={{ color: '#334155' }}>{lot.name}</strong>
+                                            </div>
+                                          </td>
+
+                                          {/* Statut de l'Appartement */}
+                                          <td style={{ padding: '12px 20px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                              {getStatusBadge(u.status)}
+                                              {tenantName && (
+                                                <span style={{ fontSize: '0.75rem', color: '#334155', fontWeight: 600 }}>
+                                                  ({tenantName})
+                                                </span>
+                                              )}
+                                            </div>
+                                          </td>
+
+                                          {/* Loyer de l'Appartement */}
+                                          <td style={{ padding: '12px 20px', textAlign: 'right' }}>
+                                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>
+                                              {u.rentAmount ? formatFcfa(Number(u.rentAmount)) : '-'}
+                                            </div>
+                                            {u.chargesAmount && Number(u.chargesAmount) > 0 && (
+                                              <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>
+                                                + {formatFcfa(Number(u.chargesAmount))} ch.
+                                              </div>
+                                            )}
+                                          </td>
+
+                                          {/* Actions Unité */}
+                                          <td style={{ padding: '12px 20px', textAlign: 'right' }}>
+                                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                                              {u.status === 'available' && (
+                                                <Link 
+                                                  href={`/contracts/create?propertyId=${u.id}`} 
+                                                  className="btn btn-secondary" 
+                                                  style={{ padding: '4px 8px', fontSize: '0.75rem', backgroundColor: '#ecfdf5', color: '#047857', borderColor: '#a7f3d0', fontWeight: 700 }}
+                                                >
+                                                  Louer
+                                                </Link>
+                                              )}
+                                              <Link 
+                                                href={`/properties/${u.id}`} 
+                                                className="btn btn-secondary" 
+                                                style={{ padding: '4px 8px', fontSize: '0.75rem', backgroundColor: '#ffffff' }}
+                                              >
+                                                Fiche
+                                              </Link>
+                                              <Link 
+                                                href={`/properties/${u.id}/edit`} 
+                                                className="btn btn-secondary" 
+                                                style={{ padding: '4px 8px', fontSize: '0.75rem', backgroundColor: '#ffffff' }}
+                                              >
+                                                Éditer
+                                              </Link>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })
+                                  )
+                                )}
+                              </React.Fragment>
+                            );
+                          })}
+
+                          {/* 2. SECTION DES BIENS INDÉPENDANTS (SANS IMMEUBLE PARENT) */}
+                          {structured.standalone.map((p: any) => (
+                            <tr 
+                              key={`standalone-${p.id}`} 
+                              style={{ 
+                                borderBottom: '1px solid var(--border)', 
+                                backgroundColor: '#ffffff',
+                                transition: 'background-color 0.15s ease' 
+                              }} 
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} 
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
+                            >
+                              <td style={{ padding: '16px 20px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                  <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: 'rgba(1, 62, 55, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
+                                    <Building2 size={20} />
+                                  </div>
+                                  <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>{p.name}</span>
+                                      <span style={{ fontSize: '0.675rem', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', backgroundColor: '#FEF3C7', color: '#92400E', textTransform: 'uppercase' }}>
+                                        {p.type} (Indépendant)
+                                      </span>
+                                    </div>
+                                    {p.manager && (
+                                      <div style={{ fontSize: '0.72rem', color: '#013E37', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                                        <UserCheck size={12} />
+                                        {p.manager.firstName} {p.manager.lastName}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td style={{ padding: '16px 20px' }}>
+                                <div style={{ fontSize: '0.875rem', color: '#334155', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <MapPin size={14} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                                  <span style={{ fontWeight: '500' }}>{p.address}</span>
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', marginLeft: '20px' }}>
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', backgroundColor: '#f1f5f9', color: '#475569', padding: '1px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '600' }}>
+                                    {p.country || 'Côte d\'Ivoire'}
+                                  </span>
+                                  <span>•</span>
+                                  <span style={{ fontWeight: '600', color: 'var(--primary)' }}>{p.city}</span>
+                                </div>
+                              </td>
+
+                              <td style={{ padding: '16px 20px' }}>
+                                {getStatusBadge(p.status)}
+                              </td>
+
+                              <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a' }}>
+                                  {p.rentAmount ? formatFcfa(Number(p.rentAmount)) : '-'}
+                                </div>
+                                {p.chargesAmount && Number(p.chargesAmount) > 0 && (
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                    + {formatFcfa(Number(p.chargesAmount))} charges
+                                  </div>
+                                )}
+                              </td>
+
+                              <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                  <Link href={`/properties/${p.id}`} className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', backgroundColor: '#ffffff' }}>
+                                    Historique & Détails
+                                  </Link>
+                                  <Link href={`/properties/${p.id}/edit`} className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', backgroundColor: '#ffffff' }}>
+                                    Éditer
+                                  </Link>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </>
+                      )}
+                    </tbody>
+                  </table>
+                );
+              })()}
             </div>
 
             {/* Pagination Bar */}

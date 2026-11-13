@@ -328,7 +328,6 @@ export default function ManagersPage() {
               padding: '10px 20px',
               fontWeight: '600',
               borderRadius: '10px',
-              boxShadow: isQuotaReached ? 'none' : '0 4px 14px rgba(1, 62, 55, 0.25)'
             }}
           >
             {isQuotaReached ? <Lock size={16} /> : <Plus size={18} />}
@@ -455,8 +454,8 @@ export default function ManagersPage() {
               placeholder="Rechercher par nom, email ou immeuble..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="input-field"
-              style={{ width: '100%', paddingLeft: '38px', borderRadius: '8px' }}
+              className="form-control"
+              style={{ paddingLeft: '36px', height: '40px' }}
             />
           </div>
 
