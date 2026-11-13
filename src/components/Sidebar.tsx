@@ -37,6 +37,7 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const [orgName, setOrgName] = useState('Mon Espace');
+  const [orgLogo, setOrgLogo] = useState<string | null>(null);
   const [planName, setPlanName] = useState('Starter');
   const [planCode, setPlanCode] = useState('starter');
   const [features, setFeatures] = useState<string[]>([]);
@@ -48,6 +49,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       try {
         const user = JSON.parse(userStr);
         if (user.organization?.name) setOrgName(user.organization.name);
+        if (user.organization?.logoUrl) setOrgLogo(api.getFileUrl(user.organization.logoUrl));
         if (user.role) setUserRole(user.role);
       } catch {}
     }
@@ -78,11 +80,18 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   useEffect(() => {
     fetchSub();
 
+    const handleBrandingUpdated = (e: any) => {
+      if (e.detail?.logoUrl) setOrgLogo(api.getFileUrl(e.detail.logoUrl));
+      if (e.detail?.name) setOrgName(e.detail.name);
+    };
+
     window.addEventListener('subscription-updated', fetchSub);
+    window.addEventListener('branding-updated', handleBrandingUpdated);
     window.addEventListener('focus', fetchSub);
 
     return () => {
       window.removeEventListener('subscription-updated', fetchSub);
+      window.removeEventListener('branding-updated', handleBrandingUpdated);
       window.removeEventListener('focus', fetchSub);
     };
   }, []);
@@ -166,20 +175,30 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     <aside className={`sidebar ${isOpen ? 'open' : ''}`} style={{ boxShadow: '4px 0 24px rgba(1, 62, 55, 0.4)' }}>
       {/* Brand Header */}
       <div style={{ height: '72px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '32px', height: '32px', backgroundColor: 'var(--accent)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(255, 239, 179, 0.3)' }}>
-            <img 
-              src="/images/logo.png" 
-              alt="Naforo Logo" 
-              style={{ width: '22px', height: '22px', objectFit: 'contain' }} 
-            />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+          <div style={{ width: '34px', height: '34px', backgroundColor: orgLogo ? '#ffffff' : 'var(--accent)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)', flexShrink: 0, overflow: 'hidden' }}>
+            {orgLogo ? (
+              <img 
+                src={orgLogo} 
+                alt={orgName} 
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+              />
+            ) : (
+              <img 
+                src="/images/logo.png" 
+                alt="Naforo Logo" 
+                style={{ width: '22px', height: '22px', objectFit: 'contain' }} 
+              />
+            )}
           </div>
-          <span style={{ fontSize: '1.2rem', fontWeight: '800', letterSpacing: '-0.02em', color: '#ffffff' }}>NAFORO</span>
+          <span style={{ fontSize: '1.15rem', fontWeight: '800', letterSpacing: '-0.02em', color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {orgLogo && orgName !== 'Mon Espace' && orgName !== 'ADMINISTRATION SAAS' ? orgName : 'NAFORO'}
+          </span>
         </div>
         <button 
           onClick={onClose} 
           className="menu-toggle"
-          style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}
+          style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', flexShrink: 0 }}
         >
           <X size={20} />
         </button>

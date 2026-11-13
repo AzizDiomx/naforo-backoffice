@@ -106,6 +106,11 @@ export default function AgencyBrandingPage() {
     setSaving(true);
     try {
       await api.put(`/organizations/${orgId}/branding`, formData);
+      window.dispatchEvent(
+        new CustomEvent('branding-updated', {
+          detail: { logoUrl: formData.logoUrl, name: formData.name },
+        })
+      );
       showFormSuccess('Paramètres de marque blanche enregistrés avec succès. Tous vos futurs documents reflèteront ces changements.');
     } catch (err) {
       handleFormError(err, "Erreur lors de l'enregistrement de la marque blanche.");
@@ -124,7 +129,13 @@ export default function AgencyBrandingPage() {
       const form = new FormData();
       form.append('logo', file);
       const res = await api.postFormData(`/organizations/${orgId}/logo`, form);
-      setFormData((prev) => ({ ...prev, logoUrl: res.logoUrl || res.data?.logoUrl || prev.logoUrl }));
+      const newLogoUrl = res.logoUrl || res.data?.logoUrl || formData.logoUrl;
+      setFormData((prev) => ({ ...prev, logoUrl: newLogoUrl }));
+      window.dispatchEvent(
+        new CustomEvent('branding-updated', {
+          detail: { logoUrl: newLogoUrl, name: formData.name },
+        })
+      );
       showFormSuccess('Logo officiel mis à jour.');
     } catch (err) {
       handleFormError(err, 'Erreur lors du téléversement du logo.');
