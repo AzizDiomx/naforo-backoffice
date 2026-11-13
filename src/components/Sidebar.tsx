@@ -167,7 +167,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       ];
     }
 
-    // 2. Comptable / Trésorier (Accountant) : Accès exclusif finances, factures, encaissements, quittances, CRG, bilans
+    // 2. Comptable / Trésorier (Accountant) : Accès finances, factures, encaissements, quittances, CRG, bilans, incidents & pannes
     if (userRole === 'accountant') {
       return [
         { name: 'Tableau de Bord', href: '/dashboard', icon: LayoutDashboard, feature: 'base', group: 'FINANCES & TRÉSORERIE' },
@@ -176,8 +176,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         { name: 'Comptabilité & Bilans', href: '/accounting', icon: BarChart3, feature: 'excel_export', group: 'FINANCES & TRÉSORERIE' },
         { name: 'Bailleurs & CRG', href: '/landlords', icon: Landmark, feature: 'landlords_crg', group: 'FINANCES & TRÉSORERIE' },
 
+        { name: 'Incidents & Pannes', href: '/incidents', icon: AlertTriangle, feature: 'base', group: 'MAINTENANCE & DÉPENSES' },
+
         { name: 'Contrats de Bail', href: '/contracts', icon: FileText, feature: 'base', group: 'CONSULTATION LOCATIVE' },
         { name: 'Locataires', href: '/tenants', icon: Users2, feature: 'base', group: 'CONSULTATION LOCATIVE' },
+        { name: 'Biens Immobiliers', href: '/properties', icon: Building2, feature: 'base', group: 'CONSULTATION LOCATIVE' },
         { name: 'Coffre-fort (GED)', href: '/documents', icon: FolderKanban, feature: 'ged_vault', group: 'DOCUMENTS & PIÈCES' },
         { name: 'Notifications', href: '/notifications', icon: Bell, feature: 'base', group: 'COMMUNICATION' },
       ].filter(item => item.feature === 'base' || isFeatureAvailable(item.feature));
