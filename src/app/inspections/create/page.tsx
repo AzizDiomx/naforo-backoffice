@@ -250,12 +250,12 @@ export default function CreateInspectionPage() {
     e.preventDefault();
 
     if (!selectedPropertyId) {
-      showFormSuccess('Veuillez sélectionner un bien immobilier.');
+      handleFormError(new Error('Veuillez sélectionner un bien immobilier.'));
       return;
     }
 
     if (roomsData.length === 0) {
-      showFormSuccess('Veuillez ajouter au moins une pièce à inspecter.');
+      handleFormError(new Error('Veuillez ajouter au moins une pièce à inspecter.'));
       return;
     }
 

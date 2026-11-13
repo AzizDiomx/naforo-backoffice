@@ -281,14 +281,22 @@ export default function AdminOrganizationsPage() {
     if (!editingOrg) return;
 
     setEditLoading(true);
+    const cleanedEditForm = {
+      ...editForm,
+      name: editForm.name.trim(),
+      email: editForm.email.trim() || undefined,
+      phone: editForm.phone.trim() || undefined,
+      address: editForm.address.trim() || undefined,
+      city: editForm.city.trim() || undefined,
+    };
     try {
-      const updated = await api.put(`/organizations/${editingOrg.id}`, editForm);
+      const updated = await api.put(`/organizations/${editingOrg.id}`, cleanedEditForm);
       toast.success('Organisation mise à jour avec succès !');
       setOrganizations(prev =>
-        prev.map(item => (item.id === editingOrg.id ? { ...item, ...updated, ...editForm } : item))
+        prev.map(item => (item.id === editingOrg.id ? { ...item, ...updated, ...cleanedEditForm } : item))
       );
       if (selectedOrgForStats && selectedOrgForStats.id === editingOrg.id) {
-        setSelectedOrgForStats(prev => (prev ? { ...prev, ...updated, ...editForm } : null));
+        setSelectedOrgForStats(prev => (prev ? { ...prev, ...updated, ...cleanedEditForm } : null));
       }
       setEditModalOpen(false);
     } catch (err: any) {
@@ -307,8 +315,19 @@ export default function AdminOrganizationsPage() {
     }
 
     setCreateLoading(true);
+    const cleanedCreateForm = {
+      ...createForm,
+      name: createForm.name.trim(),
+      email: createForm.email.trim() || undefined,
+      phone: createForm.phone.trim() || undefined,
+      address: createForm.address.trim() || undefined,
+      city: createForm.city.trim() || undefined,
+      adminFirstName: createForm.adminFirstName?.trim() || undefined,
+      adminLastName: createForm.adminLastName?.trim() || undefined,
+      adminEmail: createForm.adminEmail?.trim() || undefined,
+    };
     try {
-      const res = await api.post('/organizations', createForm);
+      const res = await api.post('/organizations', cleanedCreateForm);
       toast.success('Organisation créée avec succès !');
       setCreateModalOpen(false);
 

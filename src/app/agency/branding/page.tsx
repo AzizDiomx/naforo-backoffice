@@ -104,8 +104,20 @@ export default function AgencyBrandingPage() {
     if (!orgId) return;
 
     setSaving(true);
+    const cleanPayload = {
+      ...formData,
+      email: formData.email.trim() || undefined,
+      website: formData.website.trim() || undefined,
+      phone: formData.phone.trim() || undefined,
+      rccm: formData.rccm.trim() || undefined,
+      taxNumber: formData.taxNumber.trim() || undefined,
+      licenseNumber: formData.licenseNumber.trim() || undefined,
+      address: formData.address.trim() || undefined,
+      city: formData.city.trim() || undefined,
+      tagline: formData.tagline.trim() || undefined,
+    };
     try {
-      await api.put(`/organizations/${orgId}/branding`, formData);
+      await api.put(`/organizations/${orgId}/branding`, cleanPayload);
       window.dispatchEvent(
         new CustomEvent('branding-updated', {
           detail: { logoUrl: formData.logoUrl, name: formData.name },

@@ -314,6 +314,7 @@ export default function ManagersPage() {
               padding: '10px 20px',
               fontWeight: '600',
               borderRadius: '10px',
+              
               boxShadow: isQuotaReached ? 'none' : '0 4px 14px rgba(1, 62, 55, 0.25)'
             }}
           >

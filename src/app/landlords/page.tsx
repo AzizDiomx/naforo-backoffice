@@ -237,12 +237,27 @@ export default function LandlordsPage() {
   const handleSubmitLandlord = async (e: React.FormEvent) => {
     e.preventDefault();
     setActionLoading(true);
+    const cleanedPayload = {
+      ...formData,
+      email: formData.email.trim() || undefined,
+      firstName: formData.firstName.trim() || undefined,
+      lastName: formData.lastName.trim() || undefined,
+      companyName: formData.companyName.trim() || undefined,
+      phone: formData.phone.trim(),
+      address: formData.address.trim() || undefined,
+      bankName: formData.bankName.trim() || undefined,
+      ibanOrRib: formData.ibanOrRib.trim() || undefined,
+      mobileMoneyNumber: formData.mobileMoneyNumber.trim() || undefined,
+      notes: formData.notes.trim() || undefined,
+      managementFeeRate: Number(formData.managementFeeRate) || 0,
+      feeTaxRate: Number(formData.feeTaxRate) || 0,
+    };
     try {
       if (editingLandlord) {
-        await api.put(`/landlords/${editingLandlord.id}`, formData);
+        await api.put(`/landlords/${editingLandlord.id}`, cleanedPayload);
         showFormSuccess('Fiche bailleur mise à jour avec succès.');
       } else {
-        await api.post('/landlords', formData);
+        await api.post('/landlords', cleanedPayload);
         showFormSuccess('Nouveau bailleur mandant enregistré avec succès.');
       }
       setShowLandlordModal(false);

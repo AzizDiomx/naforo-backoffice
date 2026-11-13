@@ -186,7 +186,9 @@ export default function InvoicesPage() {
       await api.post('/invoices', {
         contractId,
         periodMonth: Number(periodMonth),
+        month: Number(periodMonth),
         periodYear: Number(periodYear),
+        year: Number(periodYear),
         rentAmount: Number(rentAmount),
         chargesAmount: Number(chargesAmount || 0),
         dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
