@@ -155,7 +155,7 @@ export default function LandlordsPage() {
   const loadReports = async (m = selectedMonth, y = selectedYear) => {
     setReportsLoading(true);
     try {
-      const res = await api.get(`/management-reports?month=${m}&year=${y}`);
+      const res = await api.get(`/management-reports?periodMonth=${m}&periodYear=${y}&month=${m}&year=${y}`);
       setReports(Array.isArray(res) ? res : res.data || []);
     } catch (err) {
       handleFormError(err, 'Erreur lors du chargement des CRG.');
@@ -273,7 +273,7 @@ export default function LandlordsPage() {
     if (!selectedLandlordForPortfolio) return;
     setPortfolioLoading(true);
     try {
-      await api.post(`/landlords/${selectedLandlordForPortfolio.id}/properties`, {
+      await api.put(`/landlords/${selectedLandlordForPortfolio.id}/properties`, {
         propertyIds: selectedPropertyIds,
       });
       showFormSuccess('Patrimoine du bailleur synchronisé avec succès.');
@@ -314,6 +314,8 @@ export default function LandlordsPage() {
     setGeneratingBatch(true);
     try {
       const res = await api.post('/management-reports/generate-all', {
+        periodMonth: selectedMonth,
+        periodYear: selectedYear,
         month: selectedMonth,
         year: selectedYear,
       });
@@ -333,6 +335,8 @@ export default function LandlordsPage() {
     try {
       await api.post('/management-reports/generate', {
         landlordId,
+        periodMonth: selectedMonth,
+        periodYear: selectedYear,
         month: selectedMonth,
         year: selectedYear,
       });
@@ -350,9 +354,9 @@ export default function LandlordsPage() {
     setActionLoading(true);
     try {
       await api.patch(`/management-reports/${reportToPay.id}/status`, {
-        status: 'paid',
-        paymentRef: paymentRefInput || `VIR-${selectedYear}${String(selectedMonth).padStart(2, '0')}`,
-        paidAt: new Date().toISOString(),
+        status: 'paid_out',
+        paymentReference: paymentRefInput || `VIR-${selectedYear}${String(selectedMonth).padStart(2, '0')}`,
+        paymentDate: new Date().toISOString(),
       });
       showFormSuccess('Reversement marqué comme payé au bailleur.');
       setShowMarkPaidModal(false);
