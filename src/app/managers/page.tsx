@@ -169,10 +169,8 @@ export default function ManagersPage() {
     }
   };
 
-  // Quota & Droits forfaitaires (Aligné avec plan-policy.ts : multi_users réservé au Forfait Expert)
-  const planCode = (subscription?.planCode || '').toLowerCase();
-  const isExpertPlan = planCode.includes('expert') || planCode.includes('agency');
-  const hasMultiUsers = isExpertPlan || (Array.isArray(subscription?.features) && subscription.features.includes('multi_users'));
+  // Quota & Droits forfaitaires (pilotés directement par les fonctionnalités du forfait en base)
+  const hasMultiUsers = Array.isArray(subscription?.features) && subscription.features.includes('multi_users');
   const maxStaff = hasMultiUsers ? 999 : 0;
   const staffCount = managers.length;
   const isQuotaReached = !hasMultiUsers;

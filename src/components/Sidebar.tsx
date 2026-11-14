@@ -108,27 +108,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const isFeatureAvailable = (featureCode: string): boolean => {
     if (userRole === 'super_admin') return true;
-    const pCode = (planCode || '').toLowerCase();
-    if (pCode.includes('expert') || pCode.includes('agency')) return true;
-    if (features.includes(featureCode)) return true;
-    if (pCode.includes('pro')) {
-      return [
-        'dashboard',
-        'standard_pdf',
-        'email_reminders',
-        'sms_whatsapp',
-        'mobile_money_autovalidate',
-        'qr_code_verification',
-        'excel_export',
-        'ged_vault',
-        'chat_encrypted',
-        'incident_management',
-        'expense_workflow',
-        'risk_scoring',
-        'advanced_stats',
-      ].includes(featureCode);
-    }
-    return false;
+    if (featureCode === 'base') return true;
+    return features.includes(featureCode);
   };
 
   const allOwnerMenuItems = [
