@@ -1716,7 +1716,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 </div>
-              ) : userRole === 'admin' || userRole === 'owner' ? (
+              ) : userRole === 'owner' ? (
                 <div style={{
                   backgroundColor: '#FFF5F5',
                   border: '1px solid #FED7D7',

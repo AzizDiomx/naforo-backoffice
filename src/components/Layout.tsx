@@ -103,7 +103,7 @@ export default function Layout({ children }: LayoutProps) {
       pathname.startsWith('/agency') ||
       pathname.startsWith('/subscription') ||
       pathname.startsWith('/inspections') ||
-      pathname.startsWith('/whatsapp'));
+      pathname.startsWith('/chat'));
 
   const isRestrictedForManager =
     userRole === 'manager' &&
@@ -115,9 +115,8 @@ export default function Layout({ children }: LayoutProps) {
   const isRestrictedForTechnician =
     userRole === 'technician' &&
     !pathname.startsWith('/incidents') &&
-    !pathname.startsWith('/chat') &&
     !pathname.startsWith('/notifications') &&
-    pathname !== '/dashboard' &&
+    !pathname.startsWith('/profile') &&
     pathname !== '/';
 
   const isAccessRestricted = isRestrictedForAccountant || isRestrictedForManager || isRestrictedForTechnician;

@@ -44,6 +44,8 @@ export default function LoginPage() {
         window.location.href = redirectTo;
       } else if (data.user.role === 'super_admin') {
         window.location.href = '/admin/dashboard';
+      } else if (data.user.role === 'technician') {
+        window.location.href = '/incidents';
       } else {
         window.location.href = '/dashboard';
       }

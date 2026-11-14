@@ -126,7 +126,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
     { name: 'Factures de Loyer', href: '/invoices', icon: Receipt, feature: 'base', group: 'FINANCES' },
     { name: 'Paiements Reçus', href: '/payments', icon: CreditCard, feature: 'base', group: 'FINANCES' },
-    { name: 'Comptabilité & Bilans', href: '/accounting', icon: BarChart3, feature: 'excel_export', group: 'FINANCES' },
+    { name: 'Comptabilité & Bilans', href: '/accounting', icon: BarChart3, feature: 'base', group: 'FINANCES' },
 
     { name: 'Messagerie Locataires', href: '/chat', icon: MessageSquare, feature: 'chat_encrypted', group: 'SERVICES PRO' },
     { name: 'Relances WhatsApp', href: '/whatsapp', icon: MessageCircle, feature: 'whatsapp_reminders', group: 'SERVICES PRO' },
@@ -154,7 +154,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         { name: 'Tableau de Bord', href: '/dashboard', icon: LayoutDashboard, feature: 'base', group: 'FINANCES & TRÉSORERIE' },
         { name: 'Factures de Loyer', href: '/invoices', icon: Receipt, feature: 'base', group: 'FINANCES & TRÉSORERIE' },
         { name: 'Paiements Reçus', href: '/payments', icon: CreditCard, feature: 'base', group: 'FINANCES & TRÉSORERIE' },
-        { name: 'Comptabilité & Bilans', href: '/accounting', icon: BarChart3, feature: 'excel_export', group: 'FINANCES & TRÉSORERIE' },
+        { name: 'Comptabilité & Bilans', href: '/accounting', icon: BarChart3, feature: 'base', group: 'FINANCES & TRÉSORERIE' },
         { name: 'Bailleurs & CRG', href: '/landlords', icon: Landmark, feature: 'landlords_crg', group: 'FINANCES & TRÉSORERIE' },
 
         { name: 'Incidents & Pannes', href: '/incidents', icon: AlertTriangle, feature: 'base', group: 'MAINTENANCE & DÉPENSES' },
@@ -163,6 +163,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         { name: 'Locataires', href: '/tenants', icon: Users2, feature: 'base', group: 'CONSULTATION LOCATIVE' },
         { name: 'Biens Immobiliers', href: '/properties', icon: Building2, feature: 'base', group: 'CONSULTATION LOCATIVE' },
         { name: 'Coffre-fort (GED)', href: '/documents', icon: FolderKanban, feature: 'ged_vault', group: 'DOCUMENTS & PIÈCES' },
+        { name: 'Relances WhatsApp', href: '/whatsapp', icon: MessageCircle, feature: 'whatsapp_reminders', group: 'COMMUNICATION' },
         { name: 'Notifications', href: '/notifications', icon: Bell, feature: 'base', group: 'COMMUNICATION' },
       ].filter(item => item.feature === 'base' || isFeatureAvailable(item.feature));
     }
@@ -190,11 +191,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     // 4. Technicien / Prestataire
     if (userRole === 'technician') {
       return [
-        { name: 'Tableau de Bord', href: '/dashboard', icon: LayoutDashboard, feature: 'base', group: 'PRINCIPAL' },
         { name: 'Incidents & Interventions', href: '/incidents', icon: AlertTriangle, feature: 'base', group: 'MAINTENANCE' },
-        { name: 'Notifications', href: '/notifications', icon: Bell, feature: 'base', group: 'PRINCIPAL' },
-        { name: 'Messagerie', href: '/chat', icon: MessageSquare, feature: 'chat_encrypted', group: 'COMMUNICATION' },
-      ];
+        { name: 'Notifications', href: '/notifications', icon: Bell, feature: 'base', group: 'COMMUNICATION' },
+      ].filter(item => item.feature === 'base' || isFeatureAvailable(item.feature));
     }
 
     // 5. Admin / Owner (Directeur d'Agence ou Propriétaire Bailleur)
