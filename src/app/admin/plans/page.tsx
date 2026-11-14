@@ -228,6 +228,9 @@ export default function AdminPlansPage() {
   const [maxLots, setMaxLots] = useState<string>('5');
   const [maxProperties, setMaxProperties] = useState<string>('15');
   const [maxTenants, setMaxTenants] = useState<string>('15');
+  const [maxStaff, setMaxStaff] = useState<string>('2');
+  const [maxWhatsappMonthly, setMaxWhatsappMonthly] = useState<string>('100');
+  const [maxLandlords, setMaxLandlords] = useState<string>('5');
   const [isRecommended, setIsRecommended] = useState<boolean>(false);
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([
     'email_reminders', 'sms_whatsapp', 'mobile_money_autovalidate', 'qr_code_verification', 'excel_export', 'ged_vault'
@@ -270,6 +273,9 @@ export default function AdminPlansPage() {
     setMaxLots('5');
     setMaxProperties('15');
     setMaxTenants('15');
+    setMaxStaff('2');
+    setMaxWhatsappMonthly('100');
+    setMaxLandlords('5');
     setIsRecommended(false);
     setSelectedFeatures(['email_reminders', 'sms_whatsapp', 'mobile_money_autovalidate', 'qr_code_verification', 'excel_export', 'ged_vault']);
     setShowForm(true);
@@ -293,7 +299,23 @@ export default function AdminPlansPage() {
     } catch {
       fList = [];
     }
-    setSelectedFeatures(fList);
+
+    const extractQuota = (key: string, fallback: number) => {
+      const tok = fList.find((f) => typeof f === 'string' && f.startsWith(`quota:${key}:`));
+      if (!tok) return String(fallback);
+      const val = Number(tok.split(':')[2]);
+      return Number.isFinite(val) ? String(val) : String(fallback);
+    };
+
+    const pCodeLower = (p.code || '').toLowerCase();
+    const isExp = pCodeLower.includes('expert') || pCodeLower.includes('agency');
+    const isPro = pCodeLower.includes('pro');
+
+    setMaxStaff(extractQuota('staff', isExp ? 9999 : isPro ? 2 : 1));
+    setMaxWhatsappMonthly(extractQuota('whatsapp', isExp ? 1000 : isPro ? 100 : 0));
+    setMaxLandlords(extractQuota('landlords', isExp ? 9999 : isPro ? 5 : 0));
+
+    setSelectedFeatures(fList.filter((f) => typeof f === 'string' && !f.startsWith('quota:')));
     setShowForm(true);
   };
 
@@ -309,6 +331,12 @@ export default function AdminPlansPage() {
     setError(null);
     setSuccess(null);
 
+    const quotaTokens = [
+      `quota:staff:${Math.max(1, Number(maxStaff) || 1)}`,
+      `quota:whatsapp:${Math.max(0, Number(maxWhatsappMonthly) || 0)}`,
+      `quota:landlords:${Math.max(0, Number(maxLandlords) || 0)}`,
+    ];
+
     const payload = {
       name,
       code,
@@ -319,7 +347,10 @@ export default function AdminPlansPage() {
       maxProperties: Number(maxProperties),
       maxTenants: Number(maxTenants),
       isRecommended,
-      features: selectedFeatures,
+      features: [
+        ...selectedFeatures.filter((f) => !f.startsWith('quota:')),
+        ...quotaTokens,
+      ],
     };
 
     try {
@@ -1270,6 +1301,54 @@ export default function AdminPlansPage() {
                       onChange={(e) => setMaxTenants(e.target.value)}
                       required
                       min="1"
+                      style={{ width: '100%', border: '1px solid #cbd5e1', borderRadius: 10, padding: '10px 14px', fontSize: '0.9rem', outline: 'none', fontWeight: 600 }}
+                    />
+                  </div>
+                </div>
+
+                {/* QUOTAS ÉTENDUS (ÉQUIPE, WHATSAPP MENSUEL, BAILLEURS) */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+                  <div>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0f172a', display: 'block', marginBottom: 6 }}>
+                      COLLABORATEURS ÉQUIPE MAX *
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Ex: 2 (9999 = illimité)"
+                      value={maxStaff}
+                      onChange={(e) => setMaxStaff(e.target.value)}
+                      required
+                      min="1"
+                      style={{ width: '100%', border: '1px solid #cbd5e1', borderRadius: 10, padding: '10px 14px', fontSize: '0.9rem', outline: 'none', fontWeight: 600 }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0f172a', display: 'block', marginBottom: 6 }}>
+                      RELANCES WHATSAPP / MOIS *
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Ex: 100 (9999 = illimité)"
+                      value={maxWhatsappMonthly}
+                      onChange={(e) => setMaxWhatsappMonthly(e.target.value)}
+                      required
+                      min="0"
+                      style={{ width: '100%', border: '1px solid #cbd5e1', borderRadius: 10, padding: '10px 14px', fontSize: '0.9rem', outline: 'none', fontWeight: 600 }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0f172a', display: 'block', marginBottom: 6 }}>
+                      BAILLEURS MANDANTS MAX *
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Ex: 5 (9999 = illimité)"
+                      value={maxLandlords}
+                      onChange={(e) => setMaxLandlords(e.target.value)}
+                      required
+                      min="0"
                       style={{ width: '100%', border: '1px solid #cbd5e1', borderRadius: 10, padding: '10px 14px', fontSize: '0.9rem', outline: 'none', fontWeight: 600 }}
                     />
                   </div>
