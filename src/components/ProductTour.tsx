@@ -169,10 +169,18 @@ const TOUR_STEPS: TourStep[] = [
 export default function ProductTour() {
   const [isOpen, setIsOpen] = useState(false);
   const [showWelcomePrompt, setShowWelcomePrompt] = useState(false);
+  const [activeSteps, setActiveSteps] = useState<TourStep[]>(TOUR_STEPS);
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
   const popoverRef = useRef<HTMLDivElement>(null);
+
+  const computeAvailableSteps = useCallback((): TourStep[] => {
+    const filtered = TOUR_STEPS.filter(
+      s => !s.target || document.querySelector(s.target) !== null
+    );
+    return filtered.length > 0 ? filtered : TOUR_STEPS;
+  }, []);
 
   // Helper pour récupérer les informations de l'utilisateur connecté
   const getCurrentUser = () => {
@@ -222,16 +230,18 @@ export default function ProductTour() {
       }
 
       setShowWelcomePrompt(false);
+      setActiveSteps(computeAvailableSteps());
       setCurrentStep(0);
       setIsOpen(true);
     };
 
     window.addEventListener('start-product-tour', handleStartTour);
     return () => window.removeEventListener('start-product-tour', handleStartTour);
-  }, []);
+  }, [computeAvailableSteps]);
 
   const startTour = () => {
     setShowWelcomePrompt(false);
+    setActiveSteps(computeAvailableSteps());
     setCurrentStep(0);
     setIsOpen(true);
   };
@@ -249,7 +259,7 @@ export default function ProductTour() {
   };
 
   const nextStep = () => {
-    if (currentStep < TOUR_STEPS.length - 1) {
+    if (currentStep < activeSteps.length - 1) {
       setCurrentStep(prev => prev + 1);
     } else {
       closeTour(true);
@@ -266,8 +276,10 @@ export default function ProductTour() {
   const updatePosition = useCallback(() => {
     if (!isOpen) return;
 
-    const step = TOUR_STEPS[currentStep];
+    const step = activeSteps[currentStep];
     if (!step) return;
+
+    const margin = 16;
 
     if (!step.target || step.placement === 'center') {
       setTargetRect(null);
@@ -277,7 +289,9 @@ export default function ProductTour() {
         left: '50%',
         transform: 'translate(-50%, -50%)',
         maxWidth: '460px',
-        width: '90vw',
+        width: `calc(100vw - ${margin * 2}px)`,
+        maxHeight: `calc(100vh - ${margin * 2}px)`,
+        overflowY: 'auto',
       });
       return;
     }
@@ -292,7 +306,9 @@ export default function ProductTour() {
         left: '50%',
         transform: 'translate(-50%, -50%)',
         maxWidth: '420px',
-        width: '90vw',
+        width: `calc(100vw - ${margin * 2}px)`,
+        maxHeight: `calc(100vh - ${margin * 2}px)`,
+        overflowY: 'auto',
       });
       return;
     }
@@ -303,63 +319,55 @@ export default function ProductTour() {
     const rect = element.getBoundingClientRect();
     setTargetRect(rect);
 
-    const popoverWidth = 380;
-    const margin = 16;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const popoverWidth = Math.min(380, viewportWidth - margin * 2);
+    const measuredHeight = popoverRef.current?.offsetHeight || 380;
+    const popoverHeight = Math.min(measuredHeight, viewportHeight - margin * 2);
     const placement = step.placement || 'bottom';
 
     let top = 0;
     let left = 0;
 
     if (placement === 'right') {
-      top = rect.top + rect.height / 2 - 120;
+      top = rect.top + rect.height / 2 - popoverHeight / 2;
       left = rect.right + margin;
-      // Empêcher de déborder à droite
-      if (left + popoverWidth > window.innerWidth) {
-        left = window.innerWidth - popoverWidth - margin;
-      }
     } else if (placement === 'left') {
-      top = rect.top + rect.height / 2 - 120;
+      top = rect.top + rect.height / 2 - popoverHeight / 2;
       left = rect.left - popoverWidth - margin;
-      if (left < margin) left = margin;
     } else if (placement === 'bottom') {
       top = rect.bottom + margin;
       left = rect.left + rect.width / 2 - popoverWidth / 2;
-      if (left + popoverWidth > window.innerWidth) {
-        left = window.innerWidth - popoverWidth - margin;
-      }
-      if (left < margin) left = margin;
     } else {
       // top
-      top = rect.top - 240 - margin;
+      top = rect.top - popoverHeight - margin;
       left = rect.left + rect.width / 2 - popoverWidth / 2;
-      if (left + popoverWidth > window.innerWidth) {
-        left = window.innerWidth - popoverWidth - margin;
-      }
-      if (left < margin) left = margin;
     }
 
-    // Garder le popover dans l'écran verticalement
-    if (top < margin) top = margin;
-    if (top + 280 > window.innerHeight) {
-      top = Math.max(margin, window.innerHeight - 300);
-    }
+    // Clamp strictement dans le viewport (horizontalement et verticalement)
+    left = Math.max(margin, Math.min(left, viewportWidth - popoverWidth - margin));
+    top = Math.max(margin, Math.min(top, viewportHeight - popoverHeight - margin));
 
     setPopoverStyle({
       position: 'fixed',
       top: `${top}px`,
       left: `${left}px`,
-      maxWidth: `${popoverWidth}px`,
-      width: '90vw',
+      width: `${popoverWidth}px`,
+      maxWidth: `calc(100vw - ${margin * 2}px)`,
+      maxHeight: `calc(100vh - ${margin * 2}px)`,
+      overflowY: 'auto',
       transform: 'none',
     });
-  }, [isOpen, currentStep]);
+  }, [isOpen, currentStep, activeSteps]);
 
   useEffect(() => {
     updatePosition();
+    const rafId = requestAnimationFrame(updatePosition);
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition, true);
 
     return () => {
+      cancelAnimationFrame(rafId);
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };
@@ -381,10 +389,10 @@ export default function ProductTour() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, currentStep]);
+  }, [isOpen, currentStep, activeSteps.length]);
 
-  const step = TOUR_STEPS[currentStep];
-  const isLastStep = currentStep === TOUR_STEPS.length - 1;
+  const step = activeSteps[currentStep];
+  const isLastStep = currentStep === activeSteps.length - 1;
   const StepIcon = step?.icon || Sparkles;
 
   return (
@@ -604,7 +612,7 @@ export default function ProductTour() {
                     fontWeight: '600',
                   }}
                 >
-                  Étape {currentStep + 1} / {TOUR_STEPS.length}
+                  Étape {currentStep + 1} / {activeSteps.length}
                 </span>
               </div>
 
@@ -680,8 +688,8 @@ export default function ProductTour() {
               }}
             >
               {/* Indicateurs de progression (Points) */}
-              <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
-                {TOUR_STEPS.map((s, idx) => (
+              <div style={{ display: 'flex', gap: '5px', alignItems: 'center', flexWrap: 'wrap' }}>
+                {activeSteps.map((s, idx) => (
                   <div
                     key={s.id}
                     onClick={() => setCurrentStep(idx)}
