@@ -50,7 +50,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         const user = JSON.parse(userStr);
         if (user.organization?.name) setOrgName(user.organization.name);
         if (user.organization?.logoUrl) setOrgLogo(api.getFileUrl(user.organization.logoUrl));
-        if (user.role) setUserRole(user.role);
+        if (user.role) setUserRole(String(user.role).toLowerCase().trim());
       } catch {}
     }
 
@@ -148,7 +148,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       ];
     }
 
-    // 2. Comptable / Trésorier (Accountant) : Accès finances, factures, encaissements, quittances, CRG, bilans, incidents & pannes
+    // 2. Comptable / Trésorier (Accountant) : Strictement Finances, Factures, Trésorerie, Bailleurs/CRG, Incidents & Pannes
     if (userRole === 'accountant') {
       return [
         { name: 'Tableau de Bord', href: '/dashboard', icon: LayoutDashboard, feature: 'base', group: 'FINANCES & TRÉSORERIE' },
@@ -159,11 +159,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         { name: 'Incidents & Pannes', href: '/incidents', icon: AlertTriangle, feature: 'base', group: 'MAINTENANCE & DÉPENSES' },
 
-        { name: 'Contrats de Bail', href: '/contracts', icon: FileText, feature: 'base', group: 'CONSULTATION LOCATIVE' },
-        { name: 'Locataires', href: '/tenants', icon: Users2, feature: 'base', group: 'CONSULTATION LOCATIVE' },
-        { name: 'Biens Immobiliers', href: '/properties', icon: Building2, feature: 'base', group: 'CONSULTATION LOCATIVE' },
-        { name: 'Coffre-fort (GED)', href: '/documents', icon: FolderKanban, feature: 'ged_vault', group: 'DOCUMENTS & PIÈCES' },
-        { name: 'Relances WhatsApp', href: '/whatsapp', icon: MessageCircle, feature: 'whatsapp_reminders', group: 'COMMUNICATION' },
         { name: 'Notifications', href: '/notifications', icon: Bell, feature: 'base', group: 'COMMUNICATION' },
       ].filter(item => item.feature === 'base' || isFeatureAvailable(item.feature));
     }
@@ -197,9 +192,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     }
 
     // 5. Admin / Owner (Directeur d'Agence ou Propriétaire Bailleur)
-    return allOwnerMenuItems.filter(item => {
-      return item.feature === 'base' || isFeatureAvailable(item.feature);
-    });
+    if (userRole === 'admin' || userRole === 'owner') {
+      return allOwnerMenuItems.filter(item => {
+        return item.feature === 'base' || isFeatureAvailable(item.feature);
+      });
+    }
+
+    return [];
   };
 
   const menuItems = getRoleFilteredItems();

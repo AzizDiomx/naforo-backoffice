@@ -30,7 +30,7 @@ export default function Layout({ children }: LayoutProps) {
       const userStr = localStorage.getItem('user');
       if (userStr) {
         const u = JSON.parse(userStr);
-        if (u.role) setUserRole(u.role);
+        if (u.role) setUserRole(String(u.role).toLowerCase().trim());
       }
     } catch {}
 
@@ -99,11 +99,15 @@ export default function Layout({ children }: LayoutProps) {
 
   const isRestrictedForAccountant =
     userRole === 'accountant' &&
-    (pathname.startsWith('/managers') ||
-      pathname.startsWith('/agency') ||
-      pathname.startsWith('/subscription') ||
-      pathname.startsWith('/inspections') ||
-      pathname.startsWith('/chat'));
+    !pathname.startsWith('/dashboard') &&
+    !pathname.startsWith('/invoices') &&
+    !pathname.startsWith('/payments') &&
+    !pathname.startsWith('/accounting') &&
+    !pathname.startsWith('/landlords') &&
+    !pathname.startsWith('/incidents') &&
+    !pathname.startsWith('/notifications') &&
+    !pathname.startsWith('/profile') &&
+    pathname !== '/';
 
   const isRestrictedForManager =
     userRole === 'manager' &&
