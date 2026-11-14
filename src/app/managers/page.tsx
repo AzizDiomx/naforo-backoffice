@@ -443,26 +443,26 @@ export default function ManagersPage() {
         </div>
 
         {/* Filters Toolbar */}
-        <div className="card" style={{ padding: '16px 20px', borderRadius: '12px', display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="card" style={{ padding: '16px 20px', borderRadius: '12px', display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
           
-          <div style={{ position: 'relative', flex: '1', minWidth: '240px' }}>
-            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <div style={{ position: 'relative', flex: '1 1 260px', minWidth: '220px' }}>
+            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
             <input
               type="text"
               placeholder="Rechercher par nom, email ou immeuble..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="form-control"
-              style={{ paddingLeft: '36px', height: '40px' }}
+              style={{ paddingLeft: '38px', height: '40px', width: '100%' }}
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', flex: '0 1 auto' }}>
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
               className="form-control"
-              style={{ height: '40px', borderRadius: '8px', minWidth: '170px', padding: '0 12px' }}
+              style={{ height: '40px', borderRadius: '8px', width: 'auto', minWidth: '185px', padding: '0 12px' }}
             >
               <option value="all">Tous les rôles</option>
               <option value="manager">Gérants de portefeuille</option>
@@ -474,7 +474,7 @@ export default function ManagersPage() {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="form-control"
-              style={{ height: '40px', borderRadius: '8px', minWidth: '150px', padding: '0 12px' }}
+              style={{ height: '40px', borderRadius: '8px', width: 'auto', minWidth: '155px', padding: '0 12px' }}
             >
               <option value="all">Tous les statuts</option>
               <option value="active">Actifs</option>
@@ -485,7 +485,7 @@ export default function ManagersPage() {
               onClick={fetchManagers}
               className="btn btn-secondary"
               title="Rafraîchir"
-              style={{ height: '40px', padding: '0 14px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              style={{ height: '40px', width: '40px', padding: 0, borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
             >
               <RefreshCw size={16} />
             </button>
