@@ -129,7 +129,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { name: 'Comptabilité & Bilans', href: '/accounting', icon: BarChart3, feature: 'base', group: 'FINANCES' },
 
     { name: 'Messagerie Locataires', href: '/chat', icon: MessageSquare, feature: 'chat_encrypted', group: 'SERVICES PRO' },
-    { name: 'Relances WhatsApp', href: '/whatsapp', icon: MessageCircle, feature: 'whatsapp_reminders', group: 'SERVICES PRO' },
+    { name: 'Relances WhatsApp', href: '/whatsapp', icon: MessageCircle, feature: 'sms_whatsapp', group: 'SERVICES PRO' },
     { name: 'Coffre-fort (GED)', href: '/documents', icon: FolderKanban, feature: 'ged_vault', group: 'SERVICES PRO' },
     { name: 'Marque Blanche Agence', href: '/agency/branding', icon: Palette, feature: 'white_label', group: 'SERVICES PRO' },
     { name: 'Mon Abonnement', href: '/subscription', icon: Gem, feature: 'base', group: 'SERVICES PRO' },
@@ -177,7 +177,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         { name: 'Paiements Reçus', href: '/payments', icon: CreditCard, feature: 'base', group: 'SUIVI DES ENCAISSEMENTS' },
 
         { name: 'Messagerie Locataires', href: '/chat', icon: MessageSquare, feature: 'chat_encrypted', group: 'COMMUNICATION' },
-        { name: 'Relances WhatsApp', href: '/whatsapp', icon: MessageCircle, feature: 'whatsapp_reminders', group: 'COMMUNICATION' },
+        { name: 'Relances WhatsApp', href: '/whatsapp', icon: MessageCircle, feature: 'sms_whatsapp', group: 'COMMUNICATION' },
         { name: 'Coffre-fort (GED)', href: '/documents', icon: FolderKanban, feature: 'ged_vault', group: 'SERVICES PRO' },
         { name: 'Notifications', href: '/notifications', icon: Bell, feature: 'base', group: 'COMMUNICATION' },
       ].filter(item => item.feature === 'base' || isFeatureAvailable(item.feature));
@@ -207,7 +207,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const groups = Array.from(new Set(menuItems.map(i => i.group)));
 
   return (
-    <aside className={`sidebar ${isOpen ? 'open' : ''}`} style={{ boxShadow: '4px 0 24px rgba(1, 62, 55, 0.4)' }}>
+    <aside className={`sidebar ${isOpen ? 'open' : ''}`} style={{ borderRight: '1px solid rgba(255, 255, 255, 0.08)' }}>
       {/* Brand Header */}
       <div style={{ height: '72px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
@@ -321,7 +321,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             {orgName}
           </span>
           <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--accent)', boxShadow: '0 0 6px var(--accent)' }}></span>
+            <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#10b981' }}></span>
             Plan {planName}
           </span>
         </div>
