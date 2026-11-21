@@ -28,15 +28,18 @@ interface TenantOption {
   propertyName?: string;
 }
 
-interface UnpaidInvoiceOption {
+interface InvoiceOption {
   id: string;
   invoiceNumber: string;
   tenantName: string;
   tenantPhone: string;
   propertyName: string;
+  totalXof: number;
   remainingXof: number;
   dueDateStr: string;
+  status: string;
   isOverdue: boolean;
+  isUnpaid: boolean;
 }
 
 type TemplateKey =
@@ -208,12 +211,19 @@ export default function WhatsAppHubPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 
-  // Répertoire locataires & factures impayées pour pré-remplissage intelligent
+  // Répertoire locataires & factures pour pré-remplissage intelligent
   const [tenants, setTenants] = useState<TenantOption[]>([]);
-  const [unpaidInvoices, setUnpaidInvoices] = useState<UnpaidInvoiceOption[]>([]);
+  const [invoiceOptions, setInvoiceOptions] = useState<InvoiceOption[]>([]);
+  const [selectedTenantId, setSelectedTenantId] = useState('');
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState('');
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
   const [bulkSending, setBulkSending] = useState(false);
   const [showBulkPanel, setShowBulkPanel] = useState(false);
+
+  const unpaidInvoices = useMemo(
+    () => invoiceOptions.filter((i) => i.isUnpaid && i.tenantPhone),
+    [invoiceOptions]
+  );
 
   // Filters & Pagination
   const [search, setSearch] = useState('');
@@ -269,51 +279,98 @@ export default function WhatsAppHubPage() {
     }
   };
 
-  // Charger les locataires et factures en attente au montage
+  // Charger les locataires (/tenant-profiles) et factures (/invoices) au montage
   useEffect(() => {
     Promise.all([
-      api.get('/tenants?limit=100').catch(() => null),
-      api.get('/invoices?limit=100').catch(() => null),
+      api.get('/tenant-profiles?page=1&limit=100').catch(() => null),
+      api.get('/invoices?page=1&limit=100').catch(() => null),
     ]).then(([tenantsRes, invoicesRes]) => {
       const rawTenants = Array.isArray(tenantsRes)
         ? tenantsRes
-        : (tenantsRes as any)?.data || [];
+        : (tenantsRes as any)?.data || (tenantsRes as any)?.items || [];
       const mappedTenants: TenantOption[] = rawTenants
-        .filter((t: any) => t?.phone)
+        .filter((t: any) => t && (t.firstName || t.lastName || t.phone))
         .map((t: any) => ({
           id: t.id,
           firstName: t.firstName || '',
           lastName: t.lastName || '',
-          phone: t.phone || '',
-          propertyName: t.contracts?.[0]?.property?.name || t.property?.name || '',
+          phone: t.phone || t.user?.phone || '',
+          propertyName:
+            t.contracts?.[0]?.property?.name ||
+            t.property?.name ||
+            '',
         }));
       setTenants(mappedTenants);
 
       const rawInvoices = Array.isArray(invoicesRes)
         ? invoicesRes
-        : (invoicesRes as any)?.data || [];
+        : (invoicesRes as any)?.data || (invoicesRes as any)?.items || [];
       const now = new Date();
-      const mappedInvoices: UnpaidInvoiceOption[] = rawInvoices
-        .filter((inv: any) => inv && (inv.status === 'pending' || inv.status === 'overdue' || inv.status === 'partial') && inv.tenantProfile?.phone)
+      const statusWeight: Record<string, number> = {
+        overdue: 0,
+        partial: 1,
+        pending: 2,
+        paid: 3,
+      };
+
+      const mappedInvoices: InvoiceOption[] = rawInvoices
+        .filter((inv: any) => inv && inv.status !== 'cancelled')
         .map((inv: any) => {
           const total = Number(inv.totalAmount || 0);
-          const paid = Number(inv.paidAmount || 0);
+          const paidFromPayments = Array.isArray(inv.payments)
+            ? inv.payments.reduce((acc: number, p: any) => acc + Number(p.amount || 0), 0)
+            : 0;
+          const paid = Number(inv.paidAmount ?? paidFromPayments ?? 0);
+          const remaining = inv.status === 'paid' ? 0 : Math.max(0, total - paid);
           const due = inv.dueDate ? new Date(inv.dueDate) : now;
           const dueStr = `${String(due.getDate()).padStart(2, '0')}/${String(
             due.getMonth() + 1
           ).padStart(2, '0')}/${due.getFullYear()}`;
+          const isUnpaid =
+            inv.status === 'pending' || inv.status === 'overdue' || inv.status === 'partial';
+          const isOverdue = inv.status === 'overdue' || (isUnpaid && due < now);
+
           return {
             id: inv.id,
             invoiceNumber: inv.invoiceNumber || 'FACT',
-            tenantName: `${inv.tenantProfile?.firstName || ''} ${inv.tenantProfile?.lastName || ''}`.trim() || 'Locataire',
+            tenantName:
+              `${inv.tenantProfile?.firstName || ''} ${inv.tenantProfile?.lastName || ''}`.trim() ||
+              'Locataire',
             tenantPhone: inv.tenantProfile?.phone || '',
             propertyName: inv.property?.name || 'Bien loué',
-            remainingXof: Math.max(0, total - paid),
+            totalXof: total,
+            remainingXof: remaining > 0 ? remaining : total,
             dueDateStr: dueStr,
-            isOverdue: inv.status === 'overdue' || due < now,
+            status: inv.status || 'pending',
+            isOverdue,
+            isUnpaid,
           };
+        })
+        .sort(
+          (a: InvoiceOption, b: InvoiceOption) =>
+            (statusWeight[a.status] ?? 9) - (statusWeight[b.status] ?? 9)
+        );
+
+      setInvoiceOptions(mappedInvoices);
+
+      // Si des locataires existent dans les factures mais pas dans /tenant-profiles, on complète la liste
+      if (mappedTenants.length === 0 && mappedInvoices.length > 0) {
+        const fallbackTenants = new Map<string, TenantOption>();
+        mappedInvoices.forEach((inv) => {
+          const key = `${inv.tenantName}_${inv.tenantPhone}`;
+          if (!fallbackTenants.has(key)) {
+            const [first, ...rest] = inv.tenantName.split(' ');
+            fallbackTenants.set(key, {
+              id: key,
+              firstName: first || 'Locataire',
+              lastName: rest.join(' '),
+              phone: inv.tenantPhone,
+              propertyName: inv.propertyName,
+            });
+          }
         });
-      setUnpaidInvoices(mappedInvoices);
+        setTenants(Array.from(fallbackTenants.values()));
+      }
     });
   }, []);
 
@@ -344,6 +401,8 @@ export default function WhatsAppHubPage() {
   };
 
   const handleSelectTenant = (tenantId: string) => {
+    setSelectedTenantId(tenantId);
+    setSelectedInvoiceId('');
     const found = tenants.find((t) => t.id === tenantId);
     if (!found) return;
     const fullName = `${found.firstName} ${found.lastName}`.trim();
@@ -359,9 +418,16 @@ export default function WhatsAppHubPage() {
   };
 
   const handleSelectInvoice = (invoiceId: string) => {
-    const inv = unpaidInvoices.find((i) => i.id === invoiceId);
+    setSelectedInvoiceId(invoiceId);
+    setSelectedTenantId('');
+    const inv = invoiceOptions.find((i) => i.id === invoiceId);
     if (!inv) return;
-    const autoTemplate: TemplateKey = inv.isOverdue ? 'courteous_overdue' : 'invoice_due';
+    const autoTemplate: TemplateKey =
+      inv.status === 'paid'
+        ? 'receipt_confirmation'
+        : inv.isOverdue
+        ? 'courteous_overdue'
+        : 'invoice_due';
     setQuickPhone(inv.tenantPhone);
     setQuickName(inv.tenantName);
     setQuickProperty(inv.propertyName);
@@ -728,18 +794,18 @@ export default function WhatsAppHubPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px', marginBottom: '16px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
               <div>
                 <label className="form-label" style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <Users size={13} /> Pré-remplir depuis un locataire
+                  <Users size={13} /> Pré-remplir depuis un locataire ({tenants.length})
                 </label>
                 <select
                   className="form-control"
-                  defaultValue=""
+                  value={selectedTenantId}
                   onChange={(e) => handleSelectTenant(e.target.value)}
                   style={{ height: '38px', fontSize: '0.82rem' }}
                 >
                   <option value="">— Choisir un locataire —</option>
                   {tenants.map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.firstName} {t.lastName} ({t.phone})
+                      {t.firstName} {t.lastName} {t.phone ? `(${t.phone})` : '(Sans tél)'}
                     </option>
                   ))}
                 </select>
@@ -747,20 +813,28 @@ export default function WhatsAppHubPage() {
 
               <div>
                 <label className="form-label" style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <FileText size={13} /> Ou depuis une facture impayée
+                  <FileText size={13} /> Ou depuis une facture ({invoiceOptions.length})
                 </label>
                 <select
                   className="form-control"
-                  defaultValue=""
+                  value={selectedInvoiceId}
                   onChange={(e) => handleSelectInvoice(e.target.value)}
                   style={{ height: '38px', fontSize: '0.82rem' }}
                 >
                   <option value="">— Choisir une facture —</option>
-                  {unpaidInvoices.map((inv) => (
-                    <option key={inv.id} value={inv.id}>
-                      {inv.invoiceNumber} · {inv.tenantName} ({formatXof(inv.remainingXof)})
-                    </option>
-                  ))}
+                  {invoiceOptions.map((inv) => {
+                    const statusTag =
+                      inv.status === 'paid'
+                        ? '[Payée]'
+                        : inv.isOverdue
+                        ? '[En retard]'
+                        : '[En attente]';
+                    return (
+                      <option key={inv.id} value={inv.id}>
+                        {statusTag} {inv.invoiceNumber} · {inv.tenantName} ({formatXof(inv.remainingXof)})
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             </div>
