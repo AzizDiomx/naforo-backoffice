@@ -118,6 +118,12 @@ interface AdvancedStats {
   recentOrgs: RecentOrg[];
   pendingSubscriptionsCount: number;
   pendingSubscriptionsList: PendingSubscription[];
+  eagenceVisitors?: {
+    totalVisits: number;
+    uniqueVisitors: number;
+    todayVisits: number;
+    thisMonthVisits: number;
+  };
   systemHealth: SystemHealth;
 }
 
@@ -520,6 +526,35 @@ export default function SuperAdminDashboard() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', fontSize: '0.78rem' }}>
               <span style={{ color: '#64748b' }}>Locataires certifiés :</span>
               <strong style={{ color: '#0f172a' }}>{stats?.totalTenants || 0} locataires</strong>
+            </div>
+          </div>
+
+          {/* Card 5: Audience Site e-Agence */}
+          <div className="card" style={{ padding: '22px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+              <div>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#64748b' }}>
+                  AUDIENCE SITE E-AGENCE
+                </span>
+                <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#0f172a', marginTop: '4px', letterSpacing: '-0.02em' }}>
+                  {stats?.eagenceVisitors?.totalVisits || 0}
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}> visites</span>
+                </div>
+              </div>
+              <div style={{ width: 42, height: 42, borderRadius: '10px', backgroundColor: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#013E37', flexShrink: 0 }}>
+                <Eye size={20} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid #f1f5f9', fontSize: '0.78rem' }}>
+              <span style={{ color: '#64748b' }}>Visiteurs uniques :</span>
+              <strong style={{ color: '#013E37' }}>{stats?.eagenceVisitors?.uniqueVisitors || 0} visiteurs</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', fontSize: '0.78rem' }}>
+              <span style={{ color: '#64748b' }}>Aujourd&apos;hui / Ce mois :</span>
+              <strong style={{ color: '#0f172a' }}>
+                {stats?.eagenceVisitors?.todayVisits || 0} / {stats?.eagenceVisitors?.thisMonthVisits || 0}
+              </strong>
             </div>
           </div>
 
