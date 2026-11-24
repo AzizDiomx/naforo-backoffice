@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import Layout from '@/components/Layout';
 import { api, ApiError } from '@/lib/api';
 import Link from 'next/link';
@@ -34,7 +34,10 @@ import {
   Sliders,
   CheckCircle,
   Clock,
-  ShieldAlert
+  ShieldAlert,
+  PenTool,
+  Type,
+  Eraser
 } from 'lucide-react';
 
 export default function ProfilePage() {
@@ -82,6 +85,42 @@ export default function ProfilePage() {
   // Téléchargement export RGPD
   const [exportLoading, setExportLoading] = useState(false);
 
+  // Signature Électronique (Propriétaire / Admin / Super Administrateur)
+  const [signatureUrl, setSignatureUrl] = useState<string>('');
+  const [sigMode, setSigMode] = useState<'draw' | 'type'>('draw');
+  const [sigText, setSigText] = useState<string>('');
+  const [sigFontIndex, setSigFontIndex] = useState<number>(0);
+  const [sigInkColor, setSigInkColor] = useState<string>('#013E37');
+  const [hasDrawnSignature, setHasDrawnSignature] = useState<boolean>(false);
+  const [sigSaving, setSigSaving] = useState<boolean>(false);
+  const sigCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isDrawingRef = useRef<boolean>(false);
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+
+  const SIGNATURE_FONTS = [
+    {
+      label: 'Notariale Classique',
+      cssFont: 'italic 42px "Brush Script MT", "Lucida Handwriting", "Apple Chancery", Georgia, serif',
+      previewFamily: '"Brush Script MT", "Lucida Handwriting", "Apple Chancery", Georgia, serif',
+    },
+    {
+      label: 'Manuscrite Élégante',
+      cssFont: 'italic 38px "Segoe Script", "Bradley Hand", "Snell Roundhand", cursive, serif',
+      previewFamily: '"Segoe Script", "Bradley Hand", "Snell Roundhand", cursive, serif',
+    },
+    {
+      label: 'Paraphe Exécutif',
+      cssFont: 'italic 600 36px "Palatino Linotype", "Book Antiqua", Georgia, serif',
+      previewFamily: '"Palatino Linotype", "Book Antiqua", Georgia, serif',
+    },
+  ];
+
+  const SIGNATURE_COLORS = [
+    { label: 'Émeraude Naforo', value: '#013E37' },
+    { label: 'Encre Noire', value: '#0F172A' },
+    { label: 'Bleu Paraphe', value: '#1D4ED8' },
+  ];
+
   const loadProfile = () => {
     setLoading(true);
     setError(null);
@@ -97,6 +136,9 @@ export default function ProfilePage() {
           setEmail(u.email || '');
           setPhone(u.phone || '');
           setOrganization(u.organization || null);
+          const existingSig = u.signatureUrl || u.organization?.signatureUrl || '';
+          setSignatureUrl(existingSig);
+          setSigText(`${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'Signature');
 
           if (u.organization?.settings?.deletionRequested) {
             setIsPendingDeletion(true);
@@ -184,6 +226,199 @@ export default function ProfilePage() {
       else setError("Erreur lors de la mise à jour de votre profil.");
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  // --- Outils Signature Électronique (Dessiner ou Taper) ---
+  const getCanvasCoordinates = (
+    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
+  ) => {
+    const canvas = sigCanvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    if ('touches' in e) {
+      const touch = e.touches[0] || e.changedTouches[0];
+      return {
+        x: (touch.clientX - rect.left) * scaleX,
+        y: (touch.clientY - rect.top) * scaleY,
+      };
+    }
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
+  };
+
+  const handleStartDrawing = (
+    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
+  ) => {
+    if ('touches' in e) {
+      e.preventDefault();
+    }
+    const canvas = sigCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const pt = getCanvasCoordinates(e);
+    isDrawingRef.current = true;
+    lastPointRef.current = pt;
+
+    ctx.strokeStyle = sigInkColor;
+    ctx.lineWidth = 2.8;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(pt.x, pt.y);
+    ctx.lineTo(pt.x + 0.1, pt.y + 0.1);
+    ctx.stroke();
+    setHasDrawnSignature(true);
+  };
+
+  const handleMoveDrawing = (
+    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
+  ) => {
+    if (!isDrawingRef.current) return;
+    if ('touches' in e) {
+      e.preventDefault();
+    }
+    const canvas = sigCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx || !lastPointRef.current) return;
+
+    const pt = getCanvasCoordinates(e);
+    ctx.strokeStyle = sigInkColor;
+    ctx.lineWidth = 2.8;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.beginPath();
+    ctx.moveTo(lastPointRef.current.x, lastPointRef.current.y);
+    ctx.lineTo(pt.x, pt.y);
+    ctx.stroke();
+
+    lastPointRef.current = pt;
+    setHasDrawnSignature(true);
+  };
+
+  const handleStopDrawing = () => {
+    isDrawingRef.current = false;
+    lastPointRef.current = null;
+  };
+
+  const handleClearDrawCanvas = () => {
+    const canvas = sigCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHasDrawnSignature(false);
+  };
+
+  const generateTypedSignatureDataUrl = (): string => {
+    const cleanText = (sigText || `${firstName} ${lastName}`.trim() || 'Signature').trim();
+    const offscreen = document.createElement('canvas');
+    offscreen.width = 560;
+    offscreen.height = 170;
+    const ctx = offscreen.getContext('2d');
+    if (!ctx) return '';
+
+    ctx.clearRect(0, 0, offscreen.width, offscreen.height);
+    const chosenFont = SIGNATURE_FONTS[sigFontIndex] || SIGNATURE_FONTS[0];
+    ctx.font = chosenFont.cssFont;
+    ctx.fillStyle = sigInkColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Légère inclinaison manuscrite authentique
+    ctx.save();
+    ctx.translate(offscreen.width / 2, offscreen.height / 2 - 8);
+    ctx.rotate(-0.035);
+    ctx.fillText(cleanText, 0, 0, offscreen.width - 48);
+
+    // Paraphe souligné subtil sous la signature
+    const textWidth = Math.min(ctx.measureText(cleanText).width, offscreen.width - 80);
+    ctx.strokeStyle = sigInkColor;
+    ctx.lineWidth = 1.8;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-textWidth * 0.42, 26);
+    ctx.quadraticCurveTo(0, 18, textWidth * 0.48, 28);
+    ctx.stroke();
+    ctx.restore();
+
+    return offscreen.toDataURL('image/png');
+  };
+
+  const handleSaveElectronicSignature = async () => {
+    setError(null);
+    setSuccess(null);
+
+    let dataUrl = '';
+    if (sigMode === 'draw') {
+      if (!hasDrawnSignature || !sigCanvasRef.current) {
+        setError('Veuillez dessiner votre signature dans le cadre avant de l’enregistrer.');
+        return;
+      }
+      dataUrl = sigCanvasRef.current.toDataURL('image/png');
+    } else {
+      if (!sigText.trim()) {
+        setError('Veuillez saisir votre nom ou paraphe pour générer la signature.');
+        return;
+      }
+      dataUrl = generateTypedSignatureDataUrl();
+    }
+
+    if (!dataUrl) {
+      setError('Impossible de générer l’image de votre signature.');
+      return;
+    }
+
+    setSigSaving(true);
+    try {
+      await api.put('/auth/profile', {
+        firstName,
+        lastName,
+        phone,
+        signatureUrl: dataUrl,
+      });
+      setSignatureUrl(dataUrl);
+      setSuccess(
+        'Votre signature électronique officielle a été enregistrée. Elle sera apposée automatiquement sur vos quittances, contrats et factures.'
+      );
+      loadProfile();
+    } catch (err: any) {
+      if (err instanceof ApiError) setError(err.message);
+      else setError('Erreur lors de l’enregistrement de votre signature électronique.');
+    } finally {
+      setSigSaving(false);
+    }
+  };
+
+  const handleDeleteElectronicSignature = async () => {
+    setError(null);
+    setSuccess(null);
+    setSigSaving(true);
+    try {
+      await api.put('/auth/profile', {
+        firstName,
+        lastName,
+        phone,
+        signatureUrl: null,
+      });
+      setSignatureUrl('');
+      handleClearDrawCanvas();
+      setSuccess('Votre signature électronique a été supprimée.');
+      loadProfile();
+    } catch (err: any) {
+      if (err instanceof ApiError) setError(err.message);
+      else setError('Erreur lors de la suppression de la signature.');
+    } finally {
+      setSigSaving(false);
     }
   };
 
@@ -1033,6 +1268,407 @@ export default function ProfilePage() {
                   </span>
                 )}
               </div>
+
+              {/* Electronic Signature Creator (Propriétaire, Admin & Super Administrateur) */}
+              {(['owner', 'admin', 'super_admin'].includes(userRole)) && (
+                <div style={{
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '14px',
+                  padding: '24px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{
+                        width: '34px',
+                        height: '34px',
+                        borderRadius: '9px',
+                        backgroundColor: '#ECFDF5',
+                        color: '#013E37',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <PenTool size={17} />
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#0F172A', margin: 0 }}>
+                            Signature Électronique Officielle
+                          </h3>
+                          <span style={{
+                            fontSize: '0.6875rem',
+                            fontWeight: '700',
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            backgroundColor: userRole === 'super_admin' ? '#FEF3C7' : '#ECFDF5',
+                            color: userRole === 'super_admin' ? '#B45309' : '#047857',
+                            border: userRole === 'super_admin' ? '1px solid #FDE68A' : '1px solid #A7F3D0'
+                          }}>
+                            {userRole === 'super_admin' ? 'Super Administrateur' : 'Propriétaire / Bailleur'}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '0.75rem', color: '#64748B', margin: '3px 0 0 0' }}>
+                          Dessinez ou tapez votre signature pour l’apposer automatiquement sur vos quittances, baux et factures PDF.
+                        </p>
+                      </div>
+                    </div>
+
+                    {signatureUrl && (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        fontSize: '0.72rem',
+                        fontWeight: '700',
+                        color: '#047857',
+                        backgroundColor: '#ECFDF5',
+                        border: '1px solid #A7F3D0',
+                        padding: '4px 10px',
+                        borderRadius: '999px'
+                      }}>
+                        <CheckCircle2 size={13} /> Signature active
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Aperçu de la signature actuellement enregistrée */}
+                  {signatureUrl && (
+                    <div style={{
+                      backgroundColor: '#F8FAFC',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: '10px',
+                      padding: '12px 16px',
+                      marginBottom: '16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '12px',
+                      flexWrap: 'wrap'
+                    }}>
+                      <div>
+                        <div style={{ fontSize: '0.6875rem', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
+                          Signature enregistrée sur vos documents
+                        </div>
+                        <div style={{
+                          backgroundColor: '#FFFFFF',
+                          border: '1px dashed #CBD5E1',
+                          borderRadius: '8px',
+                          padding: '8px 16px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minHeight: '58px'
+                        }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={signatureUrl}
+                            alt="Signature électronique enregistrée"
+                            style={{ maxHeight: '52px', maxWidth: '220px', objectFit: 'contain' }}
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleDeleteElectronicSignature}
+                        disabled={sigSaving}
+                        style={{
+                          backgroundColor: '#FEF2F2',
+                          color: '#DC2626',
+                          border: '1px solid #FECACA',
+                          borderRadius: '8px',
+                          padding: '7px 12px',
+                          fontSize: '0.75rem',
+                          fontWeight: '700',
+                          cursor: sigSaving ? 'not-allowed' : 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px'
+                        }}
+                      >
+                        <Trash2 size={13} /> Supprimer
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Sélecteur de mode : Dessiner vs Taper + Couleur d'encre */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '10px',
+                    marginBottom: '14px',
+                    flexWrap: 'wrap'
+                  }}>
+                    <div style={{
+                      display: 'inline-flex',
+                      backgroundColor: '#F1F5F9',
+                      padding: '4px',
+                      borderRadius: '10px',
+                      gap: '4px'
+                    }}>
+                      <button
+                        type="button"
+                        onClick={() => setSigMode('draw')}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '7px 13px',
+                          borderRadius: '7px',
+                          border: 'none',
+                          fontSize: '0.78rem',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          backgroundColor: sigMode === 'draw' ? '#FFFFFF' : 'transparent',
+                          color: sigMode === 'draw' ? '#013E37' : '#64748B',
+                          boxShadow: sigMode === 'draw' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <PenTool size={13} /> Dessiner votre signature
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSigMode('type')}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '7px 13px',
+                          borderRadius: '7px',
+                          border: 'none',
+                          fontSize: '0.78rem',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          backgroundColor: sigMode === 'type' ? '#FFFFFF' : 'transparent',
+                          color: sigMode === 'type' ? '#013E37' : '#64748B',
+                          boxShadow: sigMode === 'type' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <Type size={13} /> Taper votre signature
+                      </button>
+                    </div>
+
+                    {/* Choix de la couleur d'encre */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: '700', color: '#64748B' }}>Encre :</span>
+                      {SIGNATURE_COLORS.map((c) => (
+                        <button
+                          key={c.value}
+                          type="button"
+                          title={c.label}
+                          onClick={() => setSigInkColor(c.value)}
+                          style={{
+                            width: '22px',
+                            height: '22px',
+                            borderRadius: '999px',
+                            backgroundColor: c.value,
+                            border: sigInkColor === c.value ? '2px solid #10B981' : '2px solid #FFFFFF',
+                            boxShadow: sigInkColor === c.value ? '0 0 0 2px #013E37' : '0 0 0 1px #CBD5E1',
+                            cursor: 'pointer',
+                            padding: 0
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* MODE 1 : DESSINER SUR CANVAS */}
+                  {sigMode === 'draw' ? (
+                    <div>
+                      <div style={{
+                        position: 'relative',
+                        backgroundColor: '#FCFDFD',
+                        border: '1.5px dashed #CBD5E1',
+                        borderRadius: '12px',
+                        overflow: 'hidden'
+                      }}>
+                        <canvas
+                          ref={sigCanvasRef}
+                          width={560}
+                          height={170}
+                          onMouseDown={handleStartDrawing}
+                          onMouseMove={handleMoveDrawing}
+                          onMouseUp={handleStopDrawing}
+                          onMouseLeave={handleStopDrawing}
+                          onTouchStart={handleStartDrawing}
+                          onTouchMove={handleMoveDrawing}
+                          onTouchEnd={handleStopDrawing}
+                          style={{
+                            width: '100%',
+                            height: '150px',
+                            display: 'block',
+                            cursor: 'crosshair',
+                            touchAction: 'none'
+                          }}
+                        />
+
+                        {/* Ligne de base indicatrice */}
+                        <div style={{
+                          position: 'absolute',
+                          left: '28px',
+                          right: '28px',
+                          bottom: '34px',
+                          borderBottom: '1px dotted #CBD5E1',
+                          pointerEvents: 'none',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-end'
+                        }}>
+                          <span style={{ fontSize: '0.68rem', color: '#94A3B8', fontStyle: 'italic', paddingBottom: '2px' }}>
+                            Signez ici à la souris ou au doigt
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleClearDrawCanvas}
+                          style={{
+                            position: 'absolute',
+                            top: '10px',
+                            right: '10px',
+                            backgroundColor: '#FFFFFF',
+                            border: '1px solid #CBD5E1',
+                            borderRadius: '7px',
+                            padding: '5px 10px',
+                            fontSize: '0.72rem',
+                            fontWeight: '700',
+                            color: '#475569',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                          }}
+                        >
+                          <Eraser size={12} /> Effacer
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* MODE 2 : TAPER SA SIGNATURE */
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '700', color: '#475569', marginBottom: '6px' }}>
+                          TEXTE DE VOTRE SIGNATURE (NOM COMPLET OU PARAPHE)
+                        </label>
+                        <input
+                          type="text"
+                          value={sigText}
+                          onChange={(e) => setSigText(e.target.value)}
+                          placeholder="Ex: Ismaël Aziz Diomandé"
+                          maxLength={48}
+                          style={{
+                            width: '100%',
+                            padding: '10px 14px',
+                            border: '1px solid #CBD5E1',
+                            borderRadius: '8px',
+                            fontSize: '0.875rem',
+                            outline: 'none',
+                            color: '#0F172A',
+                            fontWeight: '600'
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '700', color: '#475569', marginBottom: '6px' }}>
+                          CHOISISSEZ UN STYLE CALLIGRAPHIQUE
+                        </label>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px' }}>
+                          {SIGNATURE_FONTS.map((f, idx) => {
+                            const selected = sigFontIndex === idx;
+                            return (
+                              <button
+                                key={f.label}
+                                type="button"
+                                onClick={() => setSigFontIndex(idx)}
+                                style={{
+                                  textAlign: 'center',
+                                  padding: '12px 10px',
+                                  borderRadius: '10px',
+                                  border: selected ? '2px solid #013E37' : '1px solid #E2E8F0',
+                                  backgroundColor: selected ? '#F0FDF4' : '#F8FAFC',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '6px',
+                                  minHeight: '78px'
+                                }}
+                              >
+                                <span style={{
+                                  fontFamily: f.previewFamily,
+                                  fontStyle: 'italic',
+                                  fontSize: '1.3rem',
+                                  color: sigInkColor,
+                                  lineHeight: 1.2,
+                                  maxWidth: '100%',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}>
+                                  {(sigText || `${firstName} ${lastName}`.trim() || 'Signature').trim()}
+                                </span>
+                                <span style={{
+                                  fontSize: '0.68rem',
+                                  fontWeight: '700',
+                                  color: selected ? '#013E37' : '#64748B'
+                                }}>
+                                  {f.label}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Bouton de validation de la signature */}
+                  <div style={{
+                    marginTop: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    flexWrap: 'wrap'
+                  }}>
+                    <span style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                      Format PNG transparent haute résolution certifié pour vos documents PDF.
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={handleSaveElectronicSignature}
+                      disabled={sigSaving}
+                      style={{
+                        backgroundColor: '#013E37',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: '10px',
+                        padding: '10px 18px',
+                        fontWeight: '700',
+                        fontSize: '0.8125rem',
+                        cursor: sigSaving ? 'not-allowed' : 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '7px',
+                        boxShadow: '0 2px 6px rgba(1, 62, 55, 0.22)'
+                      }}
+                    >
+                      {sigSaving ? <RefreshCw size={15} className="animate-spin" /> : <Check size={15} />}
+                      {sigSaving ? 'Enregistrement...' : 'Enregistrer ma signature'}
+                    </button>
+                  </div>
+                </div>
+              )}
 
             </div>
 
