@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import Layout from '@/components/Layout';
 import { api } from '@/lib/api';
 import {
@@ -11,7 +12,10 @@ import {
   ChevronRight,
   Gem,
   AlertTriangle,
-  ArrowUpRight
+  ArrowUpRight,
+  Plus,
+  Receipt,
+  CreditCard
 } from 'lucide-react';
 import {
   AreaChart,
@@ -98,10 +102,35 @@ export default function DashboardPage() {
     <Layout>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-        {/* Page Title */}
-        <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', marginBottom: '4px' }}>Tableau de Bord</h1>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Vue d'ensemble en temps réel de votre patrimoine immobilier</p>
+        {/* Page Title & Quick Actions (Sticky Header) */}
+        <div
+          className="page-sticky-header"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '16px',
+          }}
+        >
+          <div>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: '700', marginBottom: '4px' }}>Tableau de Bord</h1>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>
+              Vue d&apos;ensemble en temps réel de votre patrimoine immobilier
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <Link href="/invoices" className="btn btn-secondary" style={{ padding: '8px 14px', fontSize: '0.8125rem', gap: '6px' }}>
+              <Receipt size={15} /> Factures &amp; Loyers
+            </Link>
+            <Link href="/payments" className="btn btn-secondary" style={{ padding: '8px 14px', fontSize: '0.8125rem', gap: '6px' }}>
+              <CreditCard size={15} /> Encaissements
+            </Link>
+            <Link href="/properties/create" className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.8125rem', gap: '6px' }}>
+              <Plus size={15} /> Nouveau Bien
+            </Link>
+          </div>
         </div>
 
         {/* Stats Grid - Responsive Mobile First */}
