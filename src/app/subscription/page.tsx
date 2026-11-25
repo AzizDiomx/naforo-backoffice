@@ -241,11 +241,14 @@ export default function SubscriptionPage() {
     }
   };
 
-  // Calculations for agency comparison
+  // Calculations for agency comparison (dynamically aligned with Pro plan price)
+  const proPlanFromApi = plans.find((p) => (p.code || '').toLowerCase() === 'pro');
+  const proMonthlyBase = Number(proPlanFromApi?.priceMonthlyXof || 24900);
+  const proDiscount = Number(proPlanFromApi?.yearlyDiscountPercent ?? 20);
   const totalMonthlyRent = calcPropertyCount * calcAvgRent;
   const agencyMonthlyCost = totalMonthlyRent * 0.08; // 8% frais de gestion moyen
   const agencyYearlyCost = agencyMonthlyCost * 12;
-  const naforoYearlyCost = 19900 * 12; // Formule Pro
+  const naforoYearlyCost = Math.round(proMonthlyBase * 12 * (1 - proDiscount / 100)); // Formule Pro (239 040 FCFA / an)
   const yearlySavings = Math.max(0, agencyYearlyCost - naforoYearlyCost);
 
   const remainingDays = mySub?.daysRemaining !== undefined ? mySub.daysRemaining : 0;
