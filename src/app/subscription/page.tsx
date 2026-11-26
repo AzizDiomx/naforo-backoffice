@@ -35,7 +35,8 @@ import {
   Headphones,
   Phone,
   Mail,
-  MessageSquare
+  MessageSquare,
+  RefreshCw
 } from 'lucide-react';
 
 export default function SubscriptionPage() {
@@ -56,6 +57,25 @@ export default function SubscriptionPage() {
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
 
   // Checkout Form States
+  const [checkoutTab, setCheckoutTab] = useState<'saspay' | 'manual'>('saspay');
+  const [saspayConfig, setSaspayConfig] = useState<{
+    configured: boolean;
+    mode: 'sandbox' | 'live' | 'unconfigured';
+    supportedNetworks?: Array<{ code: string; label: string; country: string }>;
+  }>({ configured: false, mode: 'unconfigured' });
+  const [saspaySubMode, setSaspaySubMode] = useState<'checkout' | 'softpay'>('checkout');
+  const [saspayCountry, setSaspayCountry] = useState('CI');
+  const [saspayNetwork, setSaspayNetwork] = useState('wave_ci');
+  const [saspayPhone, setSaspayPhone] = useState('');
+  const [pendingSaspayRef, setPendingSaspayRef] = useState<string | null>(null);
+  const [saspayInstructions, setSaspayInstructions] = useState<string | null>(null);
+  const [verifyingSaspayRef, setVerifyingSaspayRef] = useState<string | null>(null);
+  const [saspayReturnBanner, setSaspayReturnBanner] = useState<{
+    type: 'success' | 'pending' | 'error';
+    message: string;
+    reference?: string;
+  } | null>(null);
+
   const [paymentMethod, setPaymentMethod] = useState('wave');
   const [transactionNumber, setTransactionNumber] = useState('');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
@@ -72,9 +92,10 @@ export default function SubscriptionPage() {
     Promise.all([
       api.get('/subscriptions/plans').catch(() => []),
       api.get('/subscriptions/me').catch(() => null),
-      api.get('/subscriptions/payments/history').catch(() => [])
+      api.get('/subscriptions/payments/history').catch(() => []),
+      api.get('/subscriptions/saspay/config').catch(() => ({ configured: false, mode: 'unconfigured' })),
     ])
-      .then(([plansData, mySubData, historyData]) => {
+      .then(([plansData, mySubData, historyData, spConfig]) => {
         const pList = Array.isArray(plansData) ? plansData : plansData?.items || plansData?.data || [];
         setPlans(pList);
 
@@ -85,6 +106,15 @@ export default function SubscriptionPage() {
 
         const hList = Array.isArray(historyData) ? historyData : historyData?.items || historyData?.data || [];
         setPaymentHistory(hList);
+
+        if (spConfig && typeof spConfig === 'object') {
+          const cfg = spConfig.data || spConfig;
+          setSaspayConfig({
+            configured: Boolean(cfg.configured),
+            mode: cfg.mode || 'unconfigured',
+            supportedNetworks: Array.isArray(cfg.supportedNetworks) ? cfg.supportedNetworks : undefined,
+          });
+        }
       })
       .catch((err) => {
         handleFormError(err, 'Erreur lors du chargement des informations d’abonnement.');
@@ -94,8 +124,59 @@ export default function SubscriptionPage() {
       });
   };
 
+  // Vérification serveur-à-serveur d'une transaction SasPay par référence
+  const handleVerifySaspay = async (reference: string) => {
+    setVerifyingSaspayRef(reference);
+    try {
+      const res: any = await api.get(`/subscriptions/saspay/verify/${encodeURIComponent(reference)}`);
+      const payload = res?.data || res;
+      if (payload?.status === 'validated' || payload?.activated) {
+        setSaspayReturnBanner({
+          type: 'success',
+          message: payload?.message || 'Paiement confirmé par SasPay ! Votre abonnement est désormais actif.',
+          reference,
+        });
+        showFormSuccess(payload?.message || 'Paiement confirmé par SasPay ! Abonnement activé.');
+        setPendingSaspayRef(null);
+        setShowCheckoutModal(false);
+        loadData();
+      } else if (payload?.status === 'rejected') {
+        setSaspayReturnBanner({
+          type: 'error',
+          message: payload?.message || 'Le paiement SasPay a été refusé ou annulé.',
+          reference,
+        });
+        loadData();
+      } else {
+        setSaspayReturnBanner({
+          type: 'pending',
+          message: payload?.message || 'Paiement en attente de confirmation Mobile Money sur SasPay.',
+          reference,
+        });
+      }
+    } catch (err) {
+      handleFormError(err, 'Impossible de vérifier le statut du paiement SasPay pour le moment.');
+    } finally {
+      setVerifyingSaspayRef(null);
+    }
+  };
+
   useEffect(() => {
     loadData();
+
+    // Détecter un retour depuis la page de paiement SasPay (?saspay_ref=SUB-...)
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const saspayRef = params.get('saspay_ref');
+      if (saspayRef) {
+        handleVerifySaspay(saspayRef);
+        params.delete('saspay_ref');
+        const cleanQuery = params.toString();
+        const nextUrl = `${window.location.pathname}${cleanQuery ? `?${cleanQuery}` : ''}`;
+        window.history.replaceState({}, '', nextUrl);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const formatFcfa = (val: number | string | undefined | null) => {
@@ -165,7 +246,62 @@ export default function SubscriptionPage() {
     setTransactionNumber('');
     setProofFile(null);
     setCheckoutErrors({});
+    setPendingSaspayRef(null);
+    setSaspayInstructions(null);
+    setCheckoutTab(saspayConfig.configured ? 'saspay' : 'saspay');
     setShowCheckoutModal(true);
+  };
+
+  // Initier un paiement instantané via l'agrégateur SasPay (Checkout hébergé ou Push Softpay)
+  const handleInitiateSaspay = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPlanForCheckout) return;
+
+    setCheckoutErrors({});
+    if (saspaySubMode === 'softpay' && !saspayPhone.trim()) {
+      setCheckoutErrors({ saspayPhone: 'Veuillez saisir votre numéro Mobile Money (ex: +2250700000000).' });
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const payload: Record<string, any> = {
+        planId: selectedPlanForCheckout.id,
+        billingCycle,
+        mode: saspaySubMode,
+      };
+
+      if (saspaySubMode === 'softpay') {
+        payload.country = saspayCountry;
+        payload.network = saspayNetwork;
+        payload.phone = saspayPhone.trim();
+      } else if (typeof window !== 'undefined') {
+        payload.returnUrl = `${window.location.origin}/subscription`;
+      }
+
+      const res: any = await api.post('/subscriptions/saspay/initiate', payload);
+      const data = res?.data || res;
+
+      if (saspaySubMode === 'checkout' && data?.checkoutUrl) {
+        showFormSuccess('Redirection vers la page de paiement sécurisée SasPay...');
+        window.location.href = data.checkoutUrl;
+        return;
+      }
+
+      // Mode Softpay (Push direct Mobile Money sur le téléphone)
+      setPendingSaspayRef(data?.paymentReference || null);
+      setSaspayInstructions(
+        data?.instructions ||
+          'Demande de paiement envoyée sur votre téléphone. Validez la notification Mobile Money, puis cliquez sur « Vérifier le paiement ».'
+      );
+      showFormSuccess('Notification de paiement envoyée sur votre téléphone via SasPay !');
+      loadData();
+    } catch (err) {
+      const res = handleFormError(err, 'Erreur lors de l’initiation du paiement SasPay.');
+      if (res.fieldErrors) setCheckoutErrors(res.fieldErrors);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   // Submit Payment Declaration
@@ -345,6 +481,78 @@ export default function SubscriptionPage() {
             </button>
           </div>
         </div>
+
+        {/* Bannière statut retour paiement SasPay */}
+        {saspayReturnBanner && (
+          <div
+            className="card"
+            style={{
+              padding: '16px 20px',
+              backgroundColor:
+                saspayReturnBanner.type === 'success'
+                  ? '#f0fdf4'
+                  : saspayReturnBanner.type === 'error'
+                  ? '#fef2f2'
+                  : '#eff6ff',
+              borderColor:
+                saspayReturnBanner.type === 'success'
+                  ? '#bbf7d0'
+                  : saspayReturnBanner.type === 'error'
+                  ? '#fecaca'
+                  : '#bfdbfe',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '14px',
+              flexWrap: 'wrap',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {saspayReturnBanner.type === 'success' ? (
+                <CheckCircle2 size={20} color="#16a34a" />
+              ) : saspayReturnBanner.type === 'error' ? (
+                <AlertCircle size={20} color="#dc2626" />
+              ) : (
+                <Clock size={20} color="#2563eb" />
+              )}
+              <div>
+                <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#0f172a' }}>
+                  {saspayReturnBanner.type === 'success'
+                    ? 'Paiement SasPay confirmé'
+                    : saspayReturnBanner.type === 'error'
+                    ? 'Paiement SasPay non abouti'
+                    : 'Vérification SasPay en cours'}
+                  {saspayReturnBanner.reference ? ` (${saspayReturnBanner.reference})` : ''}
+                </div>
+                <div style={{ fontSize: '0.8125rem', color: '#475569', marginTop: '2px' }}>
+                  {saspayReturnBanner.message}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {saspayReturnBanner.type === 'pending' && saspayReturnBanner.reference && (
+                <button
+                  type="button"
+                  onClick={() => handleVerifySaspay(saspayReturnBanner.reference!)}
+                  disabled={verifyingSaspayRef === saspayReturnBanner.reference}
+                  className="btn btn-primary"
+                  style={{ padding: '7px 12px', fontSize: '0.78rem', gap: '6px' }}
+                >
+                  <RefreshCw size={14} className={verifyingSaspayRef ? 'animate-spin' : ''} />
+                  {verifyingSaspayRef ? 'Vérification...' : 'Vérifier maintenant'}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setSaspayReturnBanner(null)}
+                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px' }}
+                aria-label="Fermer la bannière"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* 2. Critical Alert Banners (Sans bordure gauche colorée) */}
 
@@ -1142,6 +1350,17 @@ export default function SubscriptionPage() {
                             <Download size={13} />
                             Facture PDF
                           </a>
+                        ) : p.status === 'pending' && p.paymentMethod === 'saspay' ? (
+                          <button
+                            type="button"
+                            onClick={() => handleVerifySaspay(p.paymentReference)}
+                            disabled={verifyingSaspayRef === p.paymentReference}
+                            className="btn btn-primary"
+                            style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px' }}
+                          >
+                            <RefreshCw size={13} className={verifyingSaspayRef === p.paymentReference ? 'animate-spin' : ''} />
+                            {verifyingSaspayRef === p.paymentReference ? 'Vérif...' : 'Vérifier SasPay'}
+                          </button>
                         ) : (
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>En attente</span>
                         )}
@@ -1206,11 +1425,11 @@ export default function SubscriptionPage() {
 
       </div>
 
-      {/* MODAL CHECKOUT & DÉCLARATION DU PAIEMENT */}
+      {/* MODAL CHECKOUT — SASPAY INSTANTANÉ & DÉCLARATION MANUELLE */}
       {showCheckoutModal && selectedPlanForCheckout && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div className="card" style={{ maxWidth: '520px', width: '100%', padding: '24px', backgroundColor: '#ffffff', border: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
+          <div className="card" style={{ maxWidth: '560px', width: '100%', padding: '24px', backgroundColor: '#ffffff', border: '1px solid var(--border)', maxHeight: '92vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: 'rgba(1, 62, 55, 0.08)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Gem size={18} />
@@ -1220,7 +1439,7 @@ export default function SubscriptionPage() {
                     Souscription au Forfait {selectedPlanForCheckout.name}
                   </h3>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    Règlement par Mobile Money ou Virement Bancaire
+                    Paiement instantané SasPay ou déclaration manuelle
                   </span>
                 </div>
               </div>
@@ -1241,7 +1460,9 @@ export default function SubscriptionPage() {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              marginBottom: '18px'
+              marginBottom: '16px',
+              gap: '12px',
+              flexWrap: 'wrap',
             }}>
               <div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
@@ -1256,109 +1477,372 @@ export default function SubscriptionPage() {
               </span>
             </div>
 
-            <form onSubmit={handleDeclareSubscription} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-
-              {/* Canal de règlement */}
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">MOYEN DE PAIEMENT SÉLECTIONNÉ *</label>
-                <select
-                  className="form-control"
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                >
-                  <option value="wave">Wave Côte d’Ivoire (Paiement direct)</option>
-                  <option value="orange_money">Orange Money CI</option>
-                  <option value="mtn_money">MTN Mobile Money CI</option>
-                  <option value="moov_money">Moov Money CI</option>
-                  <option value="bank_transfer">Virement bancaire (Dépôt direct)</option>
-                </select>
-              </div>
-
-              {/* Instructions de paiement Mobile Money */}
-              <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '8px', padding: '10px 14px', fontSize: '0.7825rem', color: '#92400e', lineHeight: 1.4 }}>
-                <strong>📱 Instructions :</strong> Effectuez votre dépôt ou transfert vers le compte marchand Naforo officiel, puis reportez ci-dessous le numéro de transaction et la preuve.
-              </div>
-
-              {/* Référence transaction */}
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">NUMÉRO DE TRANSACTION / BORDEREAU *</label>
-                <input
-                  type="text"
-                  className={`form-control ${checkoutErrors.transactionNumber ? 'is-invalid' : ''}`}
-                  placeholder="Ex: WAVE-982183921, Réf Orange Money..."
-                  value={transactionNumber}
-                  onChange={(e) => {
-                    setTransactionNumber(e.target.value);
-                    if (checkoutErrors.transactionNumber) setCheckoutErrors({});
-                  }}
-                  required
-                />
-                {checkoutErrors.transactionNumber && (
-                  <div className="form-error">{checkoutErrors.transactionNumber}</div>
-                )}
-              </div>
-
-              {/* Date du règlement */}
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">DATE DE RÈGLEMENT *</label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={paymentDate}
-                  onChange={(e) => setPaymentDate(e.target.value)}
-                  required
-                />
-              </div>
-
-              {/* Justificatif / Capture d'écran */}
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">PREUVE DE PAIEMENT (IMAGE OU PDF)</label>
-                <div style={{
-                  border: '1.5px dashed var(--border)',
-                  borderRadius: 'var(--radius)',
-                  padding: '12px',
-                  textAlign: 'center',
-                  backgroundColor: proofFile ? 'var(--success-light)' : 'transparent',
+            {/* Mode Switcher: SasPay Instant vs Manual Proof */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '6px',
+              backgroundColor: '#f1f5f9',
+              padding: '4px',
+              borderRadius: '10px',
+              marginBottom: '16px',
+            }}>
+              <button
+                type="button"
+                onClick={() => setCheckoutTab('saspay')}
+                style={{
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  backgroundColor: checkoutTab === 'saspay' ? '#013E37' : 'transparent',
+                  color: checkoutTab === 'saspay' ? '#ffffff' : '#475569',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '8px',
-                  position: 'relative',
-                  cursor: 'pointer'
+                  gap: '6px',
+                }}
+              >
+                <Zap size={14} />
+                Paiement SasPay
+              </button>
+              <button
+                type="button"
+                onClick={() => setCheckoutTab('manual')}
+                style={{
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  backgroundColor: checkoutTab === 'manual' ? '#013E37' : 'transparent',
+                  color: checkoutTab === 'manual' ? '#ffffff' : '#475569',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                }}
+              >
+                <Upload size={14} />
+                Déclaration manuelle
+              </button>
+            </div>
+
+            {checkoutTab === 'saspay' ? (
+              <form onSubmit={handleInitiateSaspay} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {/* Statut passerelle SasPay */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  backgroundColor: saspayConfig.configured ? '#f0fdf4' : '#fffbeb',
+                  border: `1px solid ${saspayConfig.configured ? '#bbf7d0' : '#fde68a'}`,
+                  fontSize: '0.76rem',
                 }}>
-                  <Upload size={16} />
-                  <span style={{ fontSize: '0.8125rem' }}>
-                    {proofFile ? proofFile.name : 'Cliquez pour ajouter la capture d’écran'}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px', color: saspayConfig.configured ? '#166534' : '#92400e', fontWeight: 600 }}>
+                    <ShieldCheck size={15} />
+                    <span>
+                      {saspayConfig.configured
+                        ? 'Passerelle SasPay connectée — Activation immédiate après règlement'
+                        : 'Passerelle SasPay en attente de clé API serveur (SASPAY_SECRET_KEY)'}
+                    </span>
+                  </div>
+                  {saspayConfig.configured && (
+                    <span style={{
+                      padding: '2px 7px',
+                      borderRadius: '999px',
+                      fontSize: '0.68rem',
+                      fontWeight: 800,
+                      backgroundColor: saspayConfig.mode === 'live' ? '#16a34a' : '#d97706',
+                      color: '#ffffff',
+                    }}>
+                      {saspayConfig.mode === 'live' ? 'LIVE' : 'SANDBOX'}
+                    </span>
+                  )}
+                </div>
+
+                {/* Choix du mode SasPay: Checkout Hébergé vs Softpay Direct */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setSaspaySubMode('checkout')}
+                    style={{
+                      textAlign: 'left',
+                      padding: '12px',
+                      borderRadius: '10px',
+                      border: saspaySubMode === 'checkout' ? '2px solid #013E37' : '1px solid var(--border)',
+                      backgroundColor: saspaySubMode === 'checkout' ? 'rgba(1, 62, 55, 0.04)' : '#ffffff',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 700, color: '#0f172a' }}>
+                      <CreditCard size={15} color="#013E37" />
+                      Checkout SasPay
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      Page sécurisée Wave, Orange, MTN, Moov &amp; Carte
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSaspaySubMode('softpay')}
+                    style={{
+                      textAlign: 'left',
+                      padding: '12px',
+                      borderRadius: '10px',
+                      border: saspaySubMode === 'softpay' ? '2px solid #013E37' : '1px solid var(--border)',
+                      backgroundColor: saspaySubMode === 'softpay' ? 'rgba(1, 62, 55, 0.04)' : '#ffffff',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 700, color: '#0f172a' }}>
+                      <Smartphone size={15} color="#013E37" />
+                      Push Mobile Money
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      Demande directe Softpay sur votre téléphone
+                    </div>
+                  </button>
+                </div>
+
+                {/* Champs Softpay si sélectionné */}
+                {saspaySubMode === 'softpay' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: '10px' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">PAYS *</label>
+                        <select
+                          className="form-control"
+                          value={saspayCountry}
+                          onChange={(e) => {
+                            const nextCountry = e.target.value;
+                            setSaspayCountry(nextCountry);
+                            if (nextCountry === 'CI') setSaspayNetwork('wave_ci');
+                            else if (nextCountry === 'BJ') setSaspayNetwork('mtn_bj');
+                            else if (nextCountry === 'SN') setSaspayNetwork('wave_sn');
+                          }}
+                        >
+                          <option value="CI">🇨🇮 Côte d’Ivoire</option>
+                          <option value="BJ">🇧🇯 Bénin</option>
+                          <option value="SN">🇸🇳 Sénégal</option>
+                        </select>
+                      </div>
+
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">OPÉRATEUR MOBILE MONEY *</label>
+                        <select
+                          className="form-control"
+                          value={saspayNetwork}
+                          onChange={(e) => setSaspayNetwork(e.target.value)}
+                        >
+                          {(saspayConfig.supportedNetworks || [
+                            { code: 'wave_ci', label: 'Wave Côte d’Ivoire', country: 'CI' },
+                            { code: 'orange_ci', label: 'Orange Money CI', country: 'CI' },
+                            { code: 'mtn_ci', label: 'MTN Mobile Money CI', country: 'CI' },
+                            { code: 'moov_ci', label: 'Moov Money CI', country: 'CI' },
+                            { code: 'mtn_bj', label: 'MTN MoMo Bénin', country: 'BJ' },
+                            { code: 'moov_bj', label: 'Moov Money Bénin', country: 'BJ' },
+                            { code: 'wave_sn', label: 'Wave Sénégal', country: 'SN' },
+                            { code: 'orange_sn', label: 'Orange Money Sénégal', country: 'SN' },
+                          ])
+                            .filter((n) => n.country === saspayCountry)
+                            .map((n) => (
+                              <option key={n.code} value={n.code}>
+                                {n.label}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">NUMÉRO MOBILE MONEY *</label>
+                      <input
+                        type="tel"
+                        className={`form-control ${checkoutErrors.saspayPhone ? 'is-invalid' : ''}`}
+                        placeholder="Ex: +2250700000000"
+                        value={saspayPhone}
+                        onChange={(e) => {
+                          setSaspayPhone(e.target.value);
+                          if (checkoutErrors.saspayPhone) setCheckoutErrors({});
+                        }}
+                        required
+                      />
+                      {checkoutErrors.saspayPhone && (
+                        <div className="form-error">{checkoutErrors.saspayPhone}</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Panneau de suivi après push Softpay */}
+                {pendingSaspayRef && (
+                  <div style={{
+                    backgroundColor: '#eff6ff',
+                    border: '1px solid #bfdbfe',
+                    borderRadius: '10px',
+                    padding: '14px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                  }}>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1e40af' }}>
+                      Transaction SasPay en cours : {pendingSaspayRef}
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.78rem', color: '#1e3a8a', lineHeight: 1.45 }}>
+                      {saspayInstructions}
+                    </p>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => handleVerifySaspay(pendingSaspayRef)}
+                        disabled={verifyingSaspayRef === pendingSaspayRef}
+                        className="btn btn-primary"
+                        style={{ padding: '8px 14px', fontSize: '0.8rem', gap: '6px' }}
+                      >
+                        <RefreshCw size={14} className={verifyingSaspayRef ? 'animate-spin' : ''} />
+                        {verifyingSaspayRef ? 'Vérification en cours...' : 'Vérifier le paiement maintenant'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions SasPay */}
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowCheckoutModal(false)}
+                    className="btn btn-secondary"
+                    disabled={actionLoading}
+                  >
+                    Fermer
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={actionLoading || !saspayConfig.configured}
+                    style={{ gap: '6px' }}
+                  >
+                    <ExternalLink size={15} />
+                    {actionLoading
+                      ? 'Initialisation SasPay...'
+                      : saspaySubMode === 'checkout'
+                      ? `Payer ${formatFcfa(calculatePlanPrice(selectedPlanForCheckout, billingCycle))} via SasPay`
+                      : 'Envoyer la demande Mobile Money'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleDeclareSubscription} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+                {/* Canal de règlement */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">MOYEN DE PAIEMENT SÉLECTIONNÉ *</label>
+                  <select
+                    className="form-control"
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                  >
+                    <option value="wave">Wave Côte d’Ivoire (Paiement direct)</option>
+                    <option value="orange_money">Orange Money CI</option>
+                    <option value="mtn_money">MTN Mobile Money CI</option>
+                    <option value="moov_money">Moov Money CI</option>
+                    <option value="bank_transfer">Virement bancaire (Dépôt direct)</option>
+                  </select>
+                </div>
+
+                {/* Instructions de paiement Mobile Money */}
+                <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '8px', padding: '10px 14px', fontSize: '0.7825rem', color: '#92400e', lineHeight: 1.4 }}>
+                  <strong>📱 Instructions :</strong> Effectuez votre dépôt ou transfert vers le compte marchand Naforo officiel, puis reportez ci-dessous le numéro de transaction et la preuve.
+                </div>
+
+                {/* Référence transaction */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">NUMÉRO DE TRANSACTION / BORDEREAU *</label>
                   <input
-                    type="file"
-                    accept="image/*,application/pdf"
-                    onChange={(e) => setProofFile(e.target.files?.[0] || null)}
-                    style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                    type="text"
+                    className={`form-control ${checkoutErrors.transactionNumber ? 'is-invalid' : ''}`}
+                    placeholder="Ex: WAVE-982183921, Réf Orange Money..."
+                    value={transactionNumber}
+                    onChange={(e) => {
+                      setTransactionNumber(e.target.value);
+                      if (checkoutErrors.transactionNumber) setCheckoutErrors({});
+                    }}
+                    required
+                  />
+                  {checkoutErrors.transactionNumber && (
+                    <div className="form-error">{checkoutErrors.transactionNumber}</div>
+                  )}
+                </div>
+
+                {/* Date du règlement */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">DATE DE RÈGLEMENT *</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={paymentDate}
+                    onChange={(e) => setPaymentDate(e.target.value)}
+                    required
                   />
                 </div>
-              </div>
 
-              {/* Actions */}
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowCheckoutModal(false)}
-                  className="btn btn-secondary"
-                  disabled={actionLoading}
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? 'Transmission...' : 'Confirmer mon réabonnement'}
-                </button>
-              </div>
+                {/* Justificatif / Capture d'écran */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">PREUVE DE PAIEMENT (IMAGE OU PDF)</label>
+                  <div style={{
+                    border: '1.5px dashed var(--border)',
+                    borderRadius: 'var(--radius)',
+                    padding: '12px',
+                    textAlign: 'center',
+                    backgroundColor: proofFile ? 'var(--success-light)' : 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    position: 'relative',
+                    cursor: 'pointer'
+                  }}>
+                    <Upload size={16} />
+                    <span style={{ fontSize: '0.8125rem' }}>
+                      {proofFile ? proofFile.name : 'Cliquez pour ajouter la capture d’écran'}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      onChange={(e) => setProofFile(e.target.files?.[0] || null)}
+                      style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                    />
+                  </div>
+                </div>
 
-            </form>
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowCheckoutModal(false)}
+                    className="btn btn-secondary"
+                    disabled={actionLoading}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={actionLoading}
+                  >
+                    {actionLoading ? 'Transmission...' : 'Confirmer mon réabonnement'}
+                  </button>
+                </div>
+
+              </form>
+            )}
           </div>
         </div>
       )}
