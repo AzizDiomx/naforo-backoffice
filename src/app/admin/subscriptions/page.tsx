@@ -201,6 +201,9 @@ export default function AdminSubscriptionsPage() {
 
   const getMethodBadge = (method: string) => {
     const m = (method || '').toLowerCase();
+    if (m === 'saspay') {
+      return { bg: '#ecfdf5', text: '#047857', border: '#a7f3d0', label: '⚡ SasPay (Auto)' };
+    }
     if (m === 'wave') {
       return { bg: '#e0f2fe', text: '#0284c7', border: '#bae6fd', label: 'Wave' };
     }
