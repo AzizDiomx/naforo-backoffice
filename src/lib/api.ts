@@ -189,6 +189,7 @@ export async function fetchApi<T = any>(endpoint: string, options: RequestInit =
     ...options,
     headers,
     credentials: 'include',
+    cache: 'no-store',
   };
 
   let response = await fetch(`${API_BASE_URL}${endpoint}`, config);
@@ -202,6 +203,7 @@ export async function fetchApi<T = any>(endpoint: string, options: RequestInit =
         ...options,
         headers,
         credentials: 'include',
+        cache: 'no-store',
       });
     }
   }
