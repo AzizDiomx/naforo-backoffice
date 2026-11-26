@@ -67,7 +67,9 @@ export default function SubscriptionPage() {
   const [saspayCountry, setSaspayCountry] = useState('CI');
   const [saspayNetwork, setSaspayNetwork] = useState('wave_ci');
   const [saspayPhone, setSaspayPhone] = useState('');
+  const [saspayOtp, setSaspayOtp] = useState('');
   const [pendingSaspayRef, setPendingSaspayRef] = useState<string | null>(null);
+  const [pendingSaspayCheckoutUrl, setPendingSaspayCheckoutUrl] = useState<string | null>(null);
   const [saspayInstructions, setSaspayInstructions] = useState<string | null>(null);
   const [verifyingSaspayRef, setVerifyingSaspayRef] = useState<string | null>(null);
   const [saspayReturnBanner, setSaspayReturnBanner] = useState<{
@@ -247,7 +249,9 @@ export default function SubscriptionPage() {
     setProofFile(null);
     setCheckoutErrors({});
     setPendingSaspayRef(null);
+    setPendingSaspayCheckoutUrl(null);
     setSaspayInstructions(null);
+    setSaspayOtp('');
     setCheckoutTab(saspayConfig.configured ? 'saspay' : 'saspay');
     setShowCheckoutModal(true);
   };
@@ -260,6 +264,12 @@ export default function SubscriptionPage() {
     setCheckoutErrors({});
     if (saspaySubMode === 'softpay' && !saspayPhone.trim()) {
       setCheckoutErrors({ saspayPhone: 'Veuillez saisir votre numéro Mobile Money (ex: +2250700000000).' });
+      return;
+    }
+    if (saspaySubMode === 'softpay' && saspayNetwork === 'orange_ci' && saspayOtp.trim().length < 4) {
+      setCheckoutErrors({
+        saspayOtp: 'Composez #144*82# sur votre téléphone Orange Money CI puis saisissez le code OTP reçu.',
+      });
       return;
     }
 
@@ -275,6 +285,9 @@ export default function SubscriptionPage() {
         payload.country = saspayCountry;
         payload.network = saspayNetwork;
         payload.phone = saspayPhone.trim();
+        if (saspayNetwork === 'orange_ci' && saspayOtp.trim()) {
+          payload.otp = saspayOtp.trim();
+        }
       } else if (typeof window !== 'undefined') {
         payload.returnUrl = `${window.location.origin}/subscription`;
       }
@@ -288,13 +301,19 @@ export default function SubscriptionPage() {
         return;
       }
 
-      // Mode Softpay (Push direct Mobile Money sur le téléphone)
+      // Mode Softpay (Push direct Mobile Money ou lien Wave CI)
       setPendingSaspayRef(data?.paymentReference || null);
+      setPendingSaspayCheckoutUrl(data?.checkoutUrl || null);
       setSaspayInstructions(
         data?.instructions ||
-          'Demande de paiement envoyée sur votre téléphone. Validez la notification Mobile Money, puis cliquez sur « Vérifier le paiement ».'
+          (data?.checkoutUrl
+            ? 'Cliquez sur le bouton ci-dessous pour finaliser le paiement dans Wave / SasPay, puis cliquez sur « Vérifier le paiement ».'
+            : 'Demande de paiement envoyée sur votre téléphone. Validez la notification Mobile Money, puis cliquez sur « Vérifier le paiement ».')
       );
-      showFormSuccess('Notification de paiement envoyée sur votre téléphone via SasPay !');
+      if (data?.checkoutUrl && typeof window !== 'undefined') {
+        window.open(data.checkoutUrl, '_blank', 'noopener,noreferrer');
+      }
+      showFormSuccess('Notification de paiement envoyée via SasPay !');
       loadData();
     } catch (err) {
       const res = handleFormError(err, 'Erreur lors de l’initiation du paiement SasPay.');
@@ -1678,6 +1697,26 @@ export default function SubscriptionPage() {
                         <div className="form-error">{checkoutErrors.saspayPhone}</div>
                       )}
                     </div>
+
+                    {saspayNetwork === 'orange_ci' && (
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">CODE OTP ORANGE MONEY CI (#144*82#) *</label>
+                        <input
+                          type="text"
+                          className={`form-control ${checkoutErrors.saspayOtp ? 'is-invalid' : ''}`}
+                          placeholder="Composez #144*82# puis saisissez le code reçu"
+                          value={saspayOtp}
+                          onChange={(e) => {
+                            setSaspayOtp(e.target.value);
+                            if (checkoutErrors.saspayOtp) setCheckoutErrors({});
+                          }}
+                          required
+                        />
+                        {checkoutErrors.saspayOtp && (
+                          <div className="form-error">{checkoutErrors.saspayOtp}</div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1698,7 +1737,19 @@ export default function SubscriptionPage() {
                     <p style={{ margin: 0, fontSize: '0.78rem', color: '#1e3a8a', lineHeight: 1.45 }}>
                       {saspayInstructions}
                     </p>
-                    <div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {pendingSaspayCheckoutUrl && (
+                        <a
+                          href={pendingSaspayCheckoutUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-secondary"
+                          style={{ padding: '8px 14px', fontSize: '0.8rem', gap: '6px' }}
+                        >
+                          <ExternalLink size={14} />
+                          Ouvrir la page de paiement
+                        </a>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleVerifySaspay(pendingSaspayRef)}
